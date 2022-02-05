@@ -94,7 +94,7 @@ func postURLHandler(w http.ResponseWriter, r *http.Request) {
 func processLongURL(longURL string) string {
 	shortPath := generateShortPath()
 	keyValueStore[shortPath] = longURL
-	return fmt.Sprintf("%s:%d/%s", config.Host, config.Port, shortPath)
+	return fmt.Sprintf("http://%s:%d/%s", config.Host, config.Port, shortPath)
 }
 
 // generateShortPath generates a pseudorandom
