@@ -1,19 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 
-	"github.com/serjyuriev/shortener/internal/app"
+	"github.com/serjyuriev/shortener/internal/pkg/server"
 )
 
 func main() {
-	c := app.Config{
-		URLLength: 4,
-		Host:      "localhost",
-		Port:      8080,
-	}
-	svc := app.MakeService(c)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", c.Host, c.Port), svc))
+	s := server.NewServer("localhost", 8080)
+	log.Fatal(s.Start())
 }
