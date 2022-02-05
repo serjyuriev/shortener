@@ -10,7 +10,7 @@ import (
 
 func main() {
 	c := app.Config{
-		UrlLength: 4,
+		URLLength: 4,
 		Host:      "localhost",
 		Port:      8080,
 	}

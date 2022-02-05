@@ -12,7 +12,7 @@ import (
 )
 
 type Config struct {
-	UrlLength int
+	URLLength int
 	Host      string
 	Port      int
 }
@@ -25,7 +25,7 @@ var letters = []rune("abcdefghijklmnopqrstuvwxyz")
 // and returns a ServeMux with handlers.
 func MakeService(cfg Config) *http.ServeMux {
 	rand.Seed(time.Now().UnixNano())
-	keyValueStore = make(map[string]string, 0)
+	keyValueStore = make(map[string]string)
 	config = cfg
 
 	mux := &http.ServeMux{}
@@ -39,9 +39,9 @@ func MakeService(cfg Config) *http.ServeMux {
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		getUrlHandler(w, r)
+		getURLHandler(w, r)
 	case http.MethodPost:
-		postUrlHandler(w, r)
+		postURLHandler(w, r)
 	default:
 		http.Error(w, "Only GET and POST requests are allowed.",
 			http.StatusMethodNotAllowed)
@@ -49,28 +49,28 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getUrlHandler searches service store for provided short URL
+// getURLHandler searches service store for provided short URL
 // and, if such URL is found, sends a response,
 // redirecting to the corresponding long URL.
-func getUrlHandler(w http.ResponseWriter, r *http.Request) {
+func getURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
 		return
 	}
 	shortPath := r.URL.Path[1:]
-	longUrl, ok := keyValueStore[shortPath]
+	longURL, ok := keyValueStore[shortPath]
 	if !ok {
 		http.Error(w, "No URL was found.", http.StatusBadRequest)
 		return
 	}
-	w.Header().Add("Location", longUrl)
+	w.Header().Add("Location", longURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-// postUrlHandler reads a long URL provided in request body
+// postURLHandler reads a long URL provided in request body
 // and, if successful, creates a corresponding short URL,
 // storing both in service store.
-func postUrlHandler(w http.ResponseWriter, r *http.Request) {
+func postURLHandler(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -83,24 +83,24 @@ func postUrlHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s := processLongUrl(string(b))
+	s := processLongURL(string(b))
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(s))
 }
 
-// processLongUrl stores a key-value pair of short URL path and long URL
+// processLongURL stores a key-value pair of short URL path and long URL
 // in service store and returns short URL.
-func processLongUrl(longUrl string) string {
+func processLongURL(longURL string) string {
 	shortPath := generateShortPath()
-	keyValueStore[shortPath] = longUrl
+	keyValueStore[shortPath] = longURL
 	return fmt.Sprintf("%s:%d/%s", config.Host, config.Port, shortPath)
 }
 
 // generateShortPath generates a pseudorandom
 // letter sequence of fixed length.
 func generateShortPath() string {
-	b := make([]rune, config.UrlLength)
+	b := make([]rune, config.URLLength)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
