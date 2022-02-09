@@ -6,55 +6,23 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/serjyuriev/shortener/internal/pkg/shorty"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
-type serverConfig struct {
-	host string
-	port int
-}
-
 var store storage.Store
-var cfg serverConfig
 
-func MakeHandlers(ctx context.Context, host string, port int) (*http.ServeMux, error) {
-	cfg = serverConfig{
-		host: host,
-		port: port,
-	}
-	var err error
-	store, err = storage.NewStore(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	mux := &http.ServeMux{}
-	mux.HandleFunc("/", rootHandler)
-
-	return mux, nil
-}
-
-// rootHandler calls specific handlers,
-// based on the HTTP request method.
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		getURLHandler(w, r)
-	case http.MethodPost:
-		postURLHandler(w, r)
-	default:
-		http.Error(w, "Only GET and POST requests are allowed.",
-			http.StatusMethodNotAllowed)
-		return
-	}
-}
-
-// postURLHandler reads a long URL provided in request body
+// PostURLHandler reads a long URL provided in request body
 // and, if successful, creates a corresponding short URL,
 // storing both in service store.
-func postURLHandler(w http.ResponseWriter, r *http.Request) {
+func PostURLHandler(w http.ResponseWriter, r *http.Request) {
+	err := makeStoreIfNotExists()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -73,21 +41,27 @@ func postURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	shortURL := fmt.Sprintf("http://%s:%d/%s", cfg.host, cfg.port, s)
+	splitted := strings.Split(r.Host, ":")
+	shortURL := fmt.Sprintf("http://%s:%s/%s", splitted[0], splitted[1], s)
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(shortURL))
 }
 
-// getURLHandler searches service store for provided short URL
+// GetURLHandler searches service store for provided short URL
 // and, if such URL is found, sends a response,
 // redirecting to the corresponding long URL.
-func getURLHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/" {
-		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
+func GetURLHandler(w http.ResponseWriter, r *http.Request) {
+	err := makeStoreIfNotExists()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	shortPath := r.URL.Path[1:]
+	if shortPath == "" {
+		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
+		return
+	}
 	l, err := store.FindLongURL(context.Background(), storage.ShortPath(shortPath))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -95,4 +69,15 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Location", string(l))
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func makeStoreIfNotExists() error {
+	if store == nil {
+		var err error
+		store, err = storage.NewStore(context.Background())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

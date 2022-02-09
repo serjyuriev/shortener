@@ -1,9 +1,11 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 
 	"github.com/serjyuriev/shortener/internal/pkg/handlers"
 )
@@ -25,9 +27,9 @@ func NewServer(host string, port int) *server {
 }
 
 func (s *server) Start() error {
-	h, err := handlers.MakeHandlers(context.Background(), s.host, s.port)
-	if err != nil {
-		return err
-	}
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", s.host, s.port), h)
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Get("/{shortPath}", handlers.GetURLHandler)
+	r.Post("/", handlers.PostURLHandler)
+	return http.ListenAndServe(fmt.Sprintf("%s:%d", s.host, s.port), r)
 }

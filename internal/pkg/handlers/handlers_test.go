@@ -65,13 +65,9 @@ func Test_postURLHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store, _ = storage.NewStore(context.Background())
-			cfg = serverConfig{
-				host: "localhost",
-				port: 8080,
-			}
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(postURLHandler)
+			h := http.HandlerFunc(PostURLHandler)
 			h.ServeHTTP(w, request)
 			result := w.Result()
 
@@ -134,13 +130,9 @@ func Test_getURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			store, _ = storage.NewStore(context.Background())
 			store.InsertNewURLPair(context.Background(), storage.ShortPath("abcdef"), storage.LongURL("https://github.com/serjyuriev/"))
-			cfg = serverConfig{
-				host: "localhost",
-				port: 8080,
-			}
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(getURLHandler)
+			h := http.HandlerFunc(GetURLHandler)
 			h.ServeHTTP(w, request)
 			result := w.Result()
 			defer result.Body.Close()
