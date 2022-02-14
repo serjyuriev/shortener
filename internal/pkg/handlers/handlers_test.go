@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -64,7 +63,7 @@ func Test_postURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store, _ = storage.NewStore(context.Background())
+			store, _ = storage.NewStore()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(PostURLHandler)
@@ -128,8 +127,8 @@ func Test_getURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store, _ = storage.NewStore(context.Background())
-			store.InsertNewURLPair(context.Background(), storage.ShortPath("abcdef"), storage.LongURL("https://github.com/serjyuriev/"))
+			store, _ = storage.NewStore()
+			store.InsertNewURLPair(storage.ShortPath("abcdef"), storage.LongURL("https://github.com/serjyuriev/"))
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(GetURLHandler)

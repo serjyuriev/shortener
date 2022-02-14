@@ -1,17 +1,15 @@
 package storage
 
 import (
-	"context"
 	"errors"
-	"time"
 )
 
 type ShortPath string
 type LongURL string
 
 type Store interface {
-	FindLongURL(ctx context.Context, sp ShortPath) (LongURL, error)
-	InsertNewURLPair(ctx context.Context, sp ShortPath, l LongURL) error
+	FindLongURL(sp ShortPath) (LongURL, error)
+	InsertNewURLPair(sp ShortPath, l LongURL) error
 }
 
 type inMemStore struct {
@@ -22,33 +20,22 @@ var (
 	ErrNoURLWasFound = errors.New("no URL was found")
 )
 
-func NewStore(ctx context.Context) (*inMemStore, error) {
-	ctx2, cancel := context.WithTimeout(ctx, 1*time.Second)
-	defer cancel()
-
+func NewStore() (*inMemStore, error) {
 	s := inMemStore{
 		URLs: make(map[ShortPath]LongURL),
 	}
-	<-ctx2.Done()
 	return &s, nil
 }
 
-func (s *inMemStore) FindLongURL(ctx context.Context, sp ShortPath) (LongURL, error) {
-	ctx2, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-	defer cancel()
-
+func (s *inMemStore) FindLongURL(sp ShortPath) (LongURL, error) {
 	l, ok := s.URLs[sp]
 	if !ok {
 		return "", ErrNoURLWasFound
 	}
-	<-ctx2.Done()
 	return l, nil
 }
 
-func (s *inMemStore) InsertNewURLPair(ctx context.Context, sp ShortPath, l LongURL) error {
-	ctx2, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-	defer cancel()
+func (s *inMemStore) InsertNewURLPair(sp ShortPath, l LongURL) error {
 	s.URLs[sp] = l
-	<-ctx2.Done()
 	return nil
 }
