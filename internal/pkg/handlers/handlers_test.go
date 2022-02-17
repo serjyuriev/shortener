@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,90 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_postURLApiHandler(t *testing.T) {
+	type want struct {
+		statusCode  int
+		contentType string
+		generateURL bool
+		urlRegex    *regexp.Regexp
+		response    string
+	}
+	tests := []struct {
+		name    string
+		request string
+		longURL string
+		want    want
+	}{
+		{
+			name:    "positive test #1",
+			request: "http://localhost:8080/api/shorten",
+			longURL: "https://github.com/serjyuriev/",
+			want: want{
+				statusCode:  201,
+				contentType: "application/json",
+				generateURL: true,
+				urlRegex:    regexp.MustCompile("http://localhost:8080/[a-z]{6}"),
+			},
+		},
+		{
+			name:    "empty body",
+			request: "http://localhost:8080/api/shorten",
+			longURL: "",
+			want: want{
+				statusCode:  400,
+				contentType: "text/plain; charset=utf-8",
+				generateURL: false,
+				response:    "Body cannot be empty.\n",
+			},
+		},
+		{
+			name:    "not URL in body",
+			request: "http://localhost:8080/api/shorten",
+			longURL: "wow",
+			want: want{
+				statusCode:  400,
+				contentType: "text/plain; charset=utf-8",
+				generateURL: false,
+				response:    "parse \"wow\": invalid URI for request\n",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store, _ = storage.NewStore()
+			reqBody := postShortenRequest{
+				URL: tt.longURL,
+			}
+			reqBz, err := json.Marshal(reqBody)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewBuffer(reqBz))
+			w := httptest.NewRecorder()
+			h := http.HandlerFunc(PostURLApiHandler)
+			h.ServeHTTP(w, request)
+			result := w.Result()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
+			if tt.want.generateURL {
+				var res postShortenResponse
+				err := json.NewDecoder(result.Body).Decode(&res)
+				require.NoError(t, err)
+				err = result.Body.Close()
+				require.NoError(t, err)
+				assert.Regexp(t, tt.want.urlRegex, res.Result)
+			} else {
+				response, err := ioutil.ReadAll(result.Body)
+				require.NoError(t, err)
+				err = result.Body.Close()
+				require.NoError(t, err)
+				assert.Equal(t, tt.want.response, string(response))
+			}
+		})
+	}
+}
 
 func Test_postURLHandler(t *testing.T) {
 	type want struct {

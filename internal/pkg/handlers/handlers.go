@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +12,55 @@ import (
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
+type postShortenRequest struct {
+	URL string `json:"url"`
+}
+
+type postShortenResponse struct {
+	Result string `json:"result"`
+}
+
 var store storage.Store
 var shortURLHost = "http://localhost:8080"
+
+func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
+	err := makeStoreIfNotExists()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var req postShortenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(req.URL) == 0 {
+		http.Error(w, "Body cannot be empty.", http.StatusBadRequest)
+		return
+	}
+	if _, err := url.ParseRequestURI(req.URL); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s := shorty.GenerateShortPath()
+	err = store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(req.URL))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	shortURL := fmt.Sprintf("%s/%s", shortURLHost, s)
+	res := postShortenResponse{
+		Result: shortURL,
+	}
+	json, err := json.Marshal(res)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(json)
+}
 
 // PostURLHandler reads a long URL provided in request body
 // and, if successful, creates a corresponding short URL,

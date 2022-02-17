@@ -26,10 +26,12 @@ func NewServer(host string, port int) *server {
 	}
 }
 
+// Start creates new router, binds handlers and starts http server.
 func (s *server) Start() error {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Post("/", handlers.PostURLHandler)
+	r.Post("/api/shorten", handlers.PostURLApiHandler)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", s.host, s.port), r)
 }
