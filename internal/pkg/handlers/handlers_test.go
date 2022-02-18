@@ -27,12 +27,14 @@ func Test_postURLApiHandler(t *testing.T) {
 		name    string
 		request string
 		longURL string
+		baseURL string
 		want    want
 	}{
 		{
 			name:    "positive test #1",
 			request: "http://localhost:8080/api/shorten",
 			longURL: "https://github.com/serjyuriev/",
+			baseURL: "http://localhost:8080",
 			want: want{
 				statusCode:  201,
 				contentType: "application/json",
@@ -65,6 +67,7 @@ func Test_postURLApiHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ShortURLHost = tt.baseURL
 			store, _ = storage.NewStore()
 			reqBody := postShortenRequest{
 				URL: tt.longURL,
@@ -111,12 +114,14 @@ func Test_postURLHandler(t *testing.T) {
 		name    string
 		request string
 		longURL string
+		baseURL string
 		want    want
 	}{
 		{
 			name:    "positive test #1",
 			request: "http://localhost:8080/",
 			longURL: "https://github.com/serjyuriev/",
+			baseURL: "http://localhost:8080",
 			want: want{
 				statusCode:  201,
 				contentType: "text/plain",
@@ -149,6 +154,7 @@ func Test_postURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ShortURLHost = tt.baseURL
 			store, _ = storage.NewStore()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
 			w := httptest.NewRecorder()

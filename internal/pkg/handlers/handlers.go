@@ -21,7 +21,7 @@ type postShortenResponse struct {
 }
 
 var store storage.Store
-var shortURLHost = "http://localhost:8080"
+var ShortURLHost string
 
 func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	err := makeStoreIfNotExists()
@@ -48,7 +48,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	shortURL := fmt.Sprintf("%s/%s", shortURLHost, s)
+	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
 	res := postShortenResponse{
 		Result: shortURL,
 	}
@@ -91,7 +91,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	shortURL := fmt.Sprintf("%s/%s", shortURLHost, s)
+	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(shortURL))

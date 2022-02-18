@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -15,14 +14,15 @@ type Server interface {
 }
 
 type server struct {
-	host string
-	port int
+	address string
+	baseURL string
 }
 
-func NewServer(host string, port int) *server {
+func NewServer(address, baseURL string) *server {
+	handlers.ShortURLHost = baseURL
 	return &server{
-		host: host,
-		port: port,
+		address: address,
+		baseURL: baseURL,
 	}
 }
 
@@ -33,5 +33,5 @@ func (s *server) Start() error {
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", s.host, s.port), r)
+	return http.ListenAndServe(s.address, r)
 }
