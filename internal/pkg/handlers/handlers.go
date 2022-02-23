@@ -20,15 +20,10 @@ type postShortenResponse struct {
 	Result string `json:"result"`
 }
 
-var store storage.Store
+var Store storage.Store
 var ShortURLHost string
 
 func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
-	err := makeStoreIfNotExists()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	var req postShortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -43,8 +38,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s := shorty.GenerateShortPath()
-	err = store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(req.URL))
-	if err != nil {
+	if err := Store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(req.URL)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -66,11 +60,6 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 // and, if successful, creates a corresponding short URL,
 // storing both in service store.
 func PostURLHandler(w http.ResponseWriter, r *http.Request) {
-	err := makeStoreIfNotExists()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -86,7 +75,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := shorty.GenerateShortPath()
-	err = store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(b))
+	err = Store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(b))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -101,33 +90,16 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 // and, if such URL is found, sends a response,
 // redirecting to the corresponding long URL.
 func GetURLHandler(w http.ResponseWriter, r *http.Request) {
-	err := makeStoreIfNotExists()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// shortPath := r.URL.Path[1:]
 	shortPath := strings.TrimPrefix(r.URL.Path, "/")
 	if shortPath == "" {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
 		return
 	}
-	l, err := store.FindLongURL(storage.ShortPath(shortPath))
+	l, err := Store.FindLongURL(storage.ShortPath(shortPath))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Add("Location", string(l))
 	w.WriteHeader(http.StatusTemporaryRedirect)
-}
-
-func makeStoreIfNotExists() error {
-	if store == nil {
-		var err error
-		store, err = storage.NewStore()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

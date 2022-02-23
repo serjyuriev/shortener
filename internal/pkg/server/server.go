@@ -1,12 +1,14 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
 	"github.com/serjyuriev/shortener/internal/pkg/handlers"
+	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
 type Server interface {
@@ -18,12 +20,18 @@ type server struct {
 	baseURL string
 }
 
-func NewServer(address, baseURL string) *server {
+func NewServer(address, baseURL, fileStoragePath string) (*server, error) {
+	var err error
 	handlers.ShortURLHost = baseURL
+	handlers.Store, err = storage.NewStore(fileStoragePath)
+	log.Printf("%T\n", handlers.Store)
+	if err != nil {
+		return nil, err
+	}
 	return &server{
 		address: address,
 		baseURL: baseURL,
-	}
+	}, nil
 }
 
 // Start creates new router, binds handlers and starts http server.

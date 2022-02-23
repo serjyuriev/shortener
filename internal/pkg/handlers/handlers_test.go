@@ -67,15 +67,15 @@ func Test_postURLApiHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
 			ShortURLHost = tt.baseURL
-			store, _ = storage.NewStore()
+			Store, err = storage.NewStore("")
+			require.NoError(t, err)
 			reqBody := postShortenRequest{
 				URL: tt.longURL,
 			}
 			reqBz, err := json.Marshal(reqBody)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewBuffer(reqBz))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(PostURLApiHandler)
@@ -154,8 +154,10 @@ func Test_postURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
 			ShortURLHost = tt.baseURL
-			store, _ = storage.NewStore()
+			Store, err = storage.NewStore("")
+			require.NoError(t, err)
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(PostURLHandler)
@@ -219,8 +221,10 @@ func Test_getURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store, _ = storage.NewStore()
-			store.InsertNewURLPair(storage.ShortPath("abcdef"), storage.LongURL("https://github.com/serjyuriev/"))
+			var err error
+			Store, err = storage.NewStore("")
+			require.NoError(t, err)
+			Store.InsertNewURLPair(storage.ShortPath("abcdef"), storage.LongURL("https://github.com/serjyuriev/"))
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(GetURLHandler)
