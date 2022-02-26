@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/caarlos0/env/v6"
 
@@ -30,7 +31,9 @@ func main() {
 	if err := env.Parse(cfg); err != nil {
 		log.Fatal(err)
 	}
-	cfg.BaseURL = fmt.Sprintf("http://%s", cfg.ServerAddress)
+	if !strings.Contains(cfg.BaseURL, cfg.ServerAddress) {
+		cfg.BaseURL = fmt.Sprintf("http://%s", cfg.ServerAddress)
+	}
 	log.Println(cfg)
 	s, err := server.NewServer(cfg.ServerAddress, cfg.BaseURL, cfg.FileStoragePath)
 	if err != nil {
