@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/caarlos0/env/v6"
@@ -14,11 +15,21 @@ type config struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
+var cfg *config
+
+func init() {
+	cfg = &config{}
+	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "web server address")
+	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base URL for shorten links")
+	flag.StringVar(&cfg.FileStoragePath, "f", "shorten.json", "shorten URL file path")
+}
+
 func main() {
-	cfg := &config{}
+	flag.Parse()
 	if err := env.Parse(cfg); err != nil {
 		log.Fatal(err)
 	}
+	log.Println(cfg)
 	s, err := server.NewServer(cfg.ServerAddress, cfg.BaseURL, cfg.FileStoragePath)
 	if err != nil {
 		log.Fatal(err)

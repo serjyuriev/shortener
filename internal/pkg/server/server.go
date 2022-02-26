@@ -41,5 +41,6 @@ func (s *server) Start() error {
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)
+	log.Printf("starting server on %s", s.address)
 	return http.ListenAndServe(s.address, r)
 }
