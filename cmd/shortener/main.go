@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	if err := env.Parse(cfg); err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to load values from environment variables: %v", err)
 	}
 	if !strings.Contains(cfg.BaseURL, cfg.ServerAddress) {
 		cfg.BaseURL = fmt.Sprintf("%s://%s", cfg.Protocol, cfg.ServerAddress)
@@ -37,7 +37,7 @@ func main() {
 	log.Println(cfg)
 	s, err := server.NewServer(cfg.ServerAddress, cfg.BaseURL, cfg.FileStoragePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to start server: %v", err)
 	}
 	log.Fatal(s.Start())
 }

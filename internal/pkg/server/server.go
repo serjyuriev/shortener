@@ -24,7 +24,6 @@ func NewServer(address, baseURL, fileStoragePath string) (*server, error) {
 	var err error
 	handlers.ShortURLHost = baseURL
 	handlers.Store, err = storage.NewStore(fileStoragePath)
-	log.Printf("%T\n", handlers.Store)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +40,6 @@ func (s *server) Start() error {
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)
-	log.Printf("starting server on %s", s.address)
+	log.Printf("starting server on %s\n", s.address)
 	return http.ListenAndServe(s.address, r)
 }
