@@ -48,9 +48,11 @@ func (s *store) FindLongURL(sp string) (string, error) {
 
 func (s *store) InsertNewURLPair(sp string, l string) error {
 	s.URLs[sp] = l
-	if err := s.writeDataToFile(); err != nil {
-		delete(s.URLs, sp)
-		return err
+	if s.useFileStorage {
+		if err := s.writeDataToFile(); err != nil {
+			delete(s.URLs, sp)
+			return err
+		}
 	}
 	return nil
 }

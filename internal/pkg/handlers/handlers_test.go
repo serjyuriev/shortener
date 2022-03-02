@@ -61,7 +61,7 @@ func Test_postURLApiHandler(t *testing.T) {
 				statusCode:  400,
 				contentType: "text/plain; charset=utf-8",
 				generateURL: false,
-				response:    "parse \"wow\": invalid URI for request\n",
+				response:    "bad request\n",
 			},
 		},
 	}
@@ -148,7 +148,7 @@ func Test_postURLHandler(t *testing.T) {
 				statusCode:  400,
 				contentType: "text/plain; charset=utf-8",
 				generateURL: false,
-				response:    "parse \"wow\": invalid URI for request\n",
+				response:    "bad request\n",
 			},
 		},
 	}
