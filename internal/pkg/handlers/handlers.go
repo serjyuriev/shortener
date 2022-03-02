@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,7 +27,8 @@ var ShortURLHost string
 func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	var req postShortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("unable to decode request's body: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	if len(req.URL) == 0 {
@@ -34,12 +36,14 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := url.ParseRequestURI(req.URL); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("unable to parse request URL: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	s := shorty.GenerateShortPath()
 	if err := Store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(req.URL)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("unable to save URL: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
@@ -48,7 +52,8 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	json, err := json.Marshal(res)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("unable to marshal response: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -62,7 +67,8 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("unable to read request's body: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	if len(b) == 0 {
@@ -70,14 +76,16 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := url.ParseRequestURI(string(b)); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("unable to parse request URL: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	s := shorty.GenerateShortPath()
 	err = Store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(b))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("unable to save URL: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
@@ -97,7 +105,8 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := Store.FindLongURL(storage.ShortPath(shortPath))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("unable to find full URL: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	w.Header().Add("Location", string(l))
