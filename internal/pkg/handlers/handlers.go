@@ -41,7 +41,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s := shorty.GenerateShortPath()
-	if err := Store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(req.URL)); err != nil {
+	if err := Store.InsertNewURLPair(s, req.URL); err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -82,7 +82,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := shorty.GenerateShortPath()
-	err = Store.InsertNewURLPair(storage.ShortPath(s), storage.LongURL(b))
+	err = Store.InsertNewURLPair(s, string(b))
 	if err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -103,7 +103,7 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
 		return
 	}
-	l, err := Store.FindLongURL(storage.ShortPath(shortPath))
+	l, err := Store.FindLongURL(shortPath)
 	if err != nil {
 		log.Printf("unable to find full URL: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)

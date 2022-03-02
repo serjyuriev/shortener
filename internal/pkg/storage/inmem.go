@@ -1,17 +1,17 @@
 package storage
 
 type inMemStore struct {
-	URLs map[ShortPath]LongURL
+	URLs map[string]string
 }
 
 func newInmemStore() *inMemStore {
 	s := inMemStore{
-		URLs: make(map[ShortPath]LongURL),
+		URLs: make(map[string]string),
 	}
 	return &s
 }
 
-func (s *inMemStore) FindLongURL(sp ShortPath) (LongURL, error) {
+func (s *inMemStore) FindLongURL(sp string) (string, error) {
 	l, ok := s.URLs[sp]
 	if !ok {
 		return "", ErrNoURLWasFound
@@ -19,7 +19,7 @@ func (s *inMemStore) FindLongURL(sp ShortPath) (LongURL, error) {
 	return l, nil
 }
 
-func (s *inMemStore) InsertNewURLPair(sp ShortPath, l LongURL) error {
+func (s *inMemStore) InsertNewURLPair(sp string, l string) error {
 	s.URLs[sp] = l
 	return nil
 }

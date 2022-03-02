@@ -8,12 +8,12 @@ import (
 )
 
 type keyValPair struct {
-	Short ShortPath
-	Long  LongURL
+	Short string
+	Long  string
 }
 
 type fileStore struct {
-	URLs            map[ShortPath]LongURL
+	URLs            map[string]string
 	fileStoragePath string
 }
 
@@ -28,7 +28,7 @@ func newFileStore(fileStoragePath string) (*fileStore, error) {
 	return &s, nil
 }
 
-func (s *fileStore) FindLongURL(sp ShortPath) (LongURL, error) {
+func (s *fileStore) FindLongURL(sp string) (string, error) {
 	l, ok := s.URLs[sp]
 	if !ok {
 		return "", ErrNoURLWasFound
@@ -36,7 +36,7 @@ func (s *fileStore) FindLongURL(sp ShortPath) (LongURL, error) {
 	return l, nil
 }
 
-func (s *fileStore) InsertNewURLPair(sp ShortPath, l LongURL) error {
+func (s *fileStore) InsertNewURLPair(sp string, l string) error {
 	e := make(chan error, 1)
 	go func() {
 		e <- s.writeDataToFile(sp, l)
@@ -47,7 +47,7 @@ func (s *fileStore) InsertNewURLPair(sp ShortPath, l LongURL) error {
 	return <-e
 }
 
-func (s *fileStore) writeDataToFile(sp ShortPath, l LongURL) error {
+func (s *fileStore) writeDataToFile(sp string, l string) error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (s *fileStore) loadDataFromFile() error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	s.URLs = make(map[ShortPath]LongURL)
+	s.URLs = make(map[string]string)
 	for scanner.Scan() {
 		var p keyValPair
 		err := json.Unmarshal(scanner.Bytes(), &p)
