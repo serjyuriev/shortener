@@ -19,15 +19,13 @@ type config struct {
 
 var cfg *config
 
-func init() {
+func main() {
 	cfg = &config{}
 	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "web server address")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base URL for shorten links")
 	flag.StringVar(&cfg.FileStoragePath, "f", "shorten.json", "shorten URL file path")
-}
-
-func main() {
 	flag.Parse()
+
 	if err := env.Parse(cfg); err != nil {
 		log.Fatal(err)
 	}
