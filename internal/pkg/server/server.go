@@ -1,13 +1,15 @@
 package server
 
 import (
+	"compress/gzip"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	chimid "github.com/go-chi/chi/middleware"
 
 	"github.com/serjyuriev/shortener/internal/pkg/handlers"
+	"github.com/serjyuriev/shortener/internal/pkg/middleware"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
@@ -36,10 +38,21 @@ func NewServer(address, baseURL, fileStoragePath string) (*server, error) {
 // Start creates new router, binds handlers and starts http server.
 func (s *server) Start() error {
 	r := chi.NewRouter()
-	r.Use(middleware.Recoverer)
+	r.Use(chimid.Recoverer)
+	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
+	r.Use(middleware.Gzipper)
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)
 	log.Printf("starting server on %s\n", s.address)
 	return http.ListenAndServe(s.address, r)
+}
+
+var zippableTypes = []string{
+	"application/javascript",
+	"application/json",
+	"text/css",
+	"text/html",
+	"text/plain",
+	"text/xml",
 }
