@@ -9,8 +9,8 @@ import (
 )
 
 type Store interface {
-	FindLongURL(sp string) (string, error)
-	InsertNewURLPair(sp string, l string) error
+	FindLongURL(shortPath string) (string, error)
+	InsertNewURLPair(shortPath string, l string) error
 }
 
 type store struct {
@@ -38,19 +38,19 @@ func NewStore(fileStoragePath string) (Store, error) {
 	return &s, nil
 }
 
-func (s *store) FindLongURL(sp string) (string, error) {
-	l, ok := s.URLs[sp]
+func (s *store) FindLongURL(shortPath string) (string, error) {
+	l, ok := s.URLs[shortPath]
 	if !ok {
 		return "", ErrNoURLWasFound
 	}
 	return l, nil
 }
 
-func (s *store) InsertNewURLPair(sp string, l string) error {
-	s.URLs[sp] = l
+func (s *store) InsertNewURLPair(shortPath string, l string) error {
+	s.URLs[shortPath] = l
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			delete(s.URLs, sp)
+			delete(s.URLs, shortPath)
 			return err
 		}
 	}
