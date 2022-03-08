@@ -149,8 +149,7 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
 		return
 	}
-	uid := r.Context().Value(contextKeyUid).(string)
-	l, err := Store.FindLongURL(uid, shortPath)
+	l, err := Store.FindLongURL(shortPath)
 	if err != nil {
 		log.Printf("unable to find full URL: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)

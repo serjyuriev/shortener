@@ -11,14 +11,18 @@ import (
 )
 
 type Store interface {
-	FindLongURL(userID, shortPath string) (string, error)
+	FindLongURL(shortPath string) (string, error)
 	FindURLsByUser(userID string) (map[string]string, error)
-	InsertNewURLPair(userID, shortPath, l string) error
-	IsUserExists(uid uuid.UUID) bool
+	InsertNewURLPair(userID, shortPath, originalURL string) error
+}
+
+type link struct {
+	Original string
+	User     uuid.UUID
 }
 
 type store struct {
-	URLs            map[uuid.UUID]map[string]string
+	URLs            map[string]link
 	fileStoragePath string
 	useFileStorage  bool
 }
@@ -37,21 +41,17 @@ func NewStore(fileStoragePath string) (Store, error) {
 			return nil, err
 		}
 	} else {
-		s.URLs = make(map[uuid.UUID]map[string]string)
+		s.URLs = make(map[string]link)
 	}
 	return &s, nil
 }
 
-func (s *store) FindLongURL(userID, shortPath string) (string, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return "", err
-	}
-	l, ok := s.URLs[uid][shortPath]
+func (s *store) FindLongURL(shortPath string) (string, error) {
+	l, ok := s.URLs[shortPath]
 	if !ok {
 		return "", ErrNoURLWasFound
 	}
-	return l, nil
+	return l.Original, nil
 }
 
 func (s *store) FindURLsByUser(userID string) (map[string]string, error) {
@@ -59,33 +59,35 @@ func (s *store) FindURLsByUser(userID string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if userURLs, ok := s.URLs[uid]; ok {
-		return userURLs, nil
+	userURLs := make(map[string]string)
+	for k, v := range s.URLs {
+		if v.User == uid {
+			userURLs[k] = v.Original
+		}
 	}
-	return nil, ErrNoURLWasFound
+	if len(userURLs) == 0 {
+		return nil, ErrNoURLWasFound
+	}
+	return userURLs, nil
 }
 
-func (s *store) InsertNewURLPair(userID, shortPath, l string) error {
+func (s *store) InsertNewURLPair(userID, shortPath, originalURL string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return err
 	}
-	if !s.IsUserExists(uid) {
-		s.URLs[uid] = make(map[string]string)
+	newLink := link{
+		Original: originalURL,
+		User:     uid,
 	}
-	s.URLs[uid][shortPath] = l
+	s.URLs[shortPath] = newLink
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			delete(s.URLs[uid], shortPath)
+			delete(s.URLs, shortPath)
 			return err
 		}
 	}
 	return nil
-}
-
-func (s *store) IsUserExists(uid uuid.UUID) bool {
-	_, ok := s.URLs[uid]
-	return ok
 }
 
 func (s *store) loadDataFromFile() error {
@@ -96,7 +98,7 @@ func (s *store) loadDataFromFile() error {
 	}
 	defer file.Close()
 
-	s.URLs = make(map[uuid.UUID]map[string]string)
+	s.URLs = make(map[string]link)
 	b, err := io.ReadAll(file)
 	if err != nil {
 		log.Printf("unable to read from file: %v\n", err)

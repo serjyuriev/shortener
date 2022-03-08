@@ -231,7 +231,6 @@ func Test_getURLHandler(t *testing.T) {
 			uid := uuid.New().String()
 			Store.InsertNewURLPair(uid, "abcdef", "https://github.com/serjyuriev/")
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
-			request = request.WithContext(context.WithValue(request.Context(), contextKeyUid, uid))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(GetURLHandler)
 			h.ServeHTTP(w, request)

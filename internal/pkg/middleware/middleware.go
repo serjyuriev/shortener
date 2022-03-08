@@ -93,9 +93,6 @@ func Gzipper(next http.Handler) http.Handler {
 
 func generateNewUserIDCookie() (uuid.UUID, string) {
 	uid := uuid.New()
-	for handlers.Store.IsUserExists(uid) {
-		uid = uuid.New()
-	}
 
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(uid.String()))
