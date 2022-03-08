@@ -15,7 +15,6 @@ type Config struct {
 	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Protocol        string `env:"-"`
-	Key             string `env:"-"`
 }
 
 var once sync.Once
@@ -28,7 +27,6 @@ func GetConfig() *Config {
 		flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base URL for shorten links")
 		flag.StringVar(&cfg.FileStoragePath, "f", "shorten.json", "shorten URL file path")
 		flag.StringVar(&cfg.Protocol, "p", "http", "protocol to use (http/https)")
-		flag.StringVar(&cfg.Key, "k", "sh0rt7", "key to fingerprint users")
 		flag.Parse()
 
 		if err := env.Parse(cfg); err != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,13 @@ type ContextKey string
 
 var contextKeyUid = ContextKey("uid")
 
+type userURLs struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+type getUserURLsResponse []userURLs
+
 type postShortenRequest struct {
 	URL string `json:"url"`
 }
@@ -27,6 +35,38 @@ type postShortenResponse struct {
 
 var Store storage.Store
 var ShortURLHost string
+
+func GetUserURLsApiHandler(w http.ResponseWriter, r *http.Request) {
+	uid := r.Context().Value(contextKeyUid).(string)
+	m, err := Store.FindURLsByUser(uid)
+	if err != nil {
+		if errors.Is(err, storage.ErrNoURLWasFound) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusNoContent)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		log.Printf("unable to find full URL: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	res := make(getUserURLsResponse, 0)
+	for key, val := range m {
+		res = append(res, userURLs{
+			ShortURL:    fmt.Sprintf("%s/%s", ShortURLHost, key),
+			OriginalURL: val,
+		})
+	}
+	json, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("unable to marshal response: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(json)
+}
 
 func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	var req postShortenRequest
