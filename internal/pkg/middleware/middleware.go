@@ -21,7 +21,7 @@ var errInvalidCookie = errors.New("can not validate signature")
 var cookieName = "userID"
 var key = []byte("sh0rt7")
 
-var contextKeyUid = handlers.ContextKey("uid")
+var contextKeyUID = handlers.ContextKey("uid")
 
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +39,7 @@ func Auth(next http.Handler) http.Handler {
 				Expires: time.Now().Add(60 * time.Second).UTC(),
 			}
 			http.SetCookie(w, newCookie)
-			ctx := context.WithValue(r.Context(), contextKeyUid, uid.String())
+			ctx := context.WithValue(r.Context(), contextKeyUID, uid.String())
 			next.ServeHTTP(w, r.WithContext(ctx))
 			// next.ServeHTTP(w, r)
 			return
@@ -61,7 +61,7 @@ func Auth(next http.Handler) http.Handler {
 			}
 			http.SetCookie(w, newCookie)
 		}
-		ctx := context.WithValue(r.Context(), contextKeyUid, uid.String())
+		ctx := context.WithValue(r.Context(), contextKeyUID, uid.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
 		// next.ServeHTTP(w, r)
 	})

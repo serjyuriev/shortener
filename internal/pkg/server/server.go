@@ -43,7 +43,7 @@ func (s *server) Start() error {
 	r.Use(middleware.Gzipper)
 	r.Use(middleware.Auth)
 	r.Get("/{shortPath}", handlers.GetURLHandler)
-	r.Get("/api/user/urls", handlers.GetUserURLsApiHandler)
+	r.Get("/api/user/urls", handlers.GetUserURLsAPIHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)
 	log.Printf("starting server on %s\n", s.address)

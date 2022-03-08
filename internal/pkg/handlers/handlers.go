@@ -16,7 +16,7 @@ import (
 
 type ContextKey string
 
-var contextKeyUid = ContextKey("uid")
+var contextKeyUID = ContextKey("uid")
 
 type userURLs struct {
 	ShortURL    string `json:"short_url"`
@@ -36,8 +36,8 @@ type postShortenResponse struct {
 var Store storage.Store
 var ShortURLHost string
 
-func GetUserURLsApiHandler(w http.ResponseWriter, r *http.Request) {
-	uid := r.Context().Value(contextKeyUid).(string)
+func GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
+	uid := r.Context().Value(contextKeyUID).(string)
 	m, err := Store.FindURLsByUser(uid)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoURLWasFound) {
@@ -85,7 +85,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s := shorty.GenerateShortPath()
-	uid := r.Context().Value(contextKeyUid).(string)
+	uid := r.Context().Value(contextKeyUID).(string)
 	if err := Store.InsertNewURLPair(uid, s, req.URL); err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -127,7 +127,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := shorty.GenerateShortPath()
-	uid := r.Context().Value(contextKeyUid).(string)
+	uid := r.Context().Value(contextKeyUID).(string)
 	err = Store.InsertNewURLPair(uid, s, string(b))
 	if err != nil {
 		log.Printf("unable to save URL: %v\n", err)
