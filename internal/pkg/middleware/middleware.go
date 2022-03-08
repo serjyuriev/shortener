@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/serjyuriev/shortener/internal/pkg/handlers"
@@ -33,8 +34,9 @@ func Auth(next http.Handler) http.Handler {
 			}
 			uid, newCookieValue := generateNewUserIDCookie()
 			newCookie := &http.Cookie{
-				Name:  cookieName,
-				Value: newCookieValue,
+				Name:    cookieName,
+				Value:   newCookieValue,
+				Expires: time.Now().Add(60 * time.Second).UTC(),
 			}
 			http.SetCookie(w, newCookie)
 			ctx := context.WithValue(r.Context(), contextKeyUid, uid.String())
@@ -53,8 +55,9 @@ func Auth(next http.Handler) http.Handler {
 			var newCookieValue string
 			uid, newCookieValue = generateNewUserIDCookie()
 			newCookie := &http.Cookie{
-				Name:  cookieName,
-				Value: newCookieValue,
+				Name:    cookieName,
+				Value:   newCookieValue,
+				Expires: time.Now().Add(60 * time.Second).UTC(),
 			}
 			http.SetCookie(w, newCookie)
 		}
