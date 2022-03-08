@@ -6,15 +6,18 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 type Store interface {
-	FindLongURL(shortPath string) (string, error)
-	InsertNewURLPair(shortPath string, l string) error
+	FindLongURL(userID, shortPath string) (string, error)
+	InsertNewURLPair(userID, shortPath, l string) error
+	IsUserExists(uid uuid.UUID) bool
 }
 
 type store struct {
-	URLs            map[string]string
+	URLs            map[uuid.UUID]map[string]string
 	fileStoragePath string
 	useFileStorage  bool
 }
@@ -33,24 +36,40 @@ func NewStore(fileStoragePath string) (Store, error) {
 			return nil, err
 		}
 	} else {
-		s.URLs = make(map[string]string)
+		s.URLs = make(map[uuid.UUID]map[string]string)
 	}
 	return &s, nil
 }
 
-func (s *store) FindLongURL(shortPath string) (string, error) {
-	l, ok := s.URLs[shortPath]
+func (s *store) IsUserExists(uid uuid.UUID) bool {
+	_, ok := s.URLs[uid]
+	return ok
+}
+
+func (s *store) FindLongURL(userID, shortPath string) (string, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return "", err
+	}
+	l, ok := s.URLs[uid][shortPath]
 	if !ok {
 		return "", ErrNoURLWasFound
 	}
 	return l, nil
 }
 
-func (s *store) InsertNewURLPair(shortPath string, l string) error {
-	s.URLs[shortPath] = l
+func (s *store) InsertNewURLPair(userID, shortPath, l string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	if !s.IsUserExists(uid) {
+		s.URLs[uid] = make(map[string]string)
+	}
+	s.URLs[uid][shortPath] = l
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			delete(s.URLs, shortPath)
+			delete(s.URLs[uid], shortPath)
 			return err
 		}
 	}
@@ -60,16 +79,19 @@ func (s *store) InsertNewURLPair(shortPath string, l string) error {
 func (s *store) writeDataToFile() error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
+		log.Printf("unable to open file %s: %v\n", s.fileStoragePath, err)
 		return err
 	}
 	defer file.Close()
 
 	data, err := json.Marshal(s.URLs)
 	if err != nil {
+		log.Printf("unable to marshal map to json: %v\n", err)
 		return err
 	}
 	num, err := file.Write(data)
 	if err != nil {
+		log.Printf("unable to write data to file: %v\n", err)
 		return err
 	}
 	log.Printf("Number of bytes written: %d", num)
@@ -79,19 +101,22 @@ func (s *store) writeDataToFile() error {
 func (s *store) loadDataFromFile() error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
+		log.Printf("unable to open file %s: %v\n", s.fileStoragePath, err)
 		return err
 	}
 	defer file.Close()
 
-	s.URLs = make(map[string]string)
+	s.URLs = make(map[uuid.UUID]map[string]string)
 	b, err := io.ReadAll(file)
 	if err != nil {
+		log.Printf("unable to read from file: %v\n", err)
 		return err
 	}
 	if len(b) == 0 {
 		return nil
 	}
 	if err = json.Unmarshal(b, &s.URLs); err != nil {
+		log.Printf("unable to unmarshal json: %v\n", err)
 		return err
 	}
 	return nil

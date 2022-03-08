@@ -224,7 +224,7 @@ func Test_getURLHandler(t *testing.T) {
 			var err error
 			Store, err = storage.NewStore("")
 			require.NoError(t, err)
-			Store.InsertNewURLPair("abcdef", "https://github.com/serjyuriev/")
+			Store.InsertNewURLPair("dfcc3691-d210-4bb8-a421-10d71d2e4dcd", "abcdef", "https://github.com/serjyuriev/")
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(GetURLHandler)

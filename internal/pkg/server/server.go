@@ -41,6 +41,7 @@ func (s *server) Start() error {
 	r.Use(chimid.Recoverer)
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
 	r.Use(middleware.Gzipper)
+	r.Use(middleware.Auth)
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)

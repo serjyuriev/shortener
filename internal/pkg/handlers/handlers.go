@@ -13,6 +13,10 @@ import (
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
+type ContextKey string
+
+var contextKeyUid = ContextKey("uid")
+
 type postShortenRequest struct {
 	URL string `json:"url"`
 }
@@ -41,7 +45,8 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s := shorty.GenerateShortPath()
-	if err := Store.InsertNewURLPair(s, req.URL); err != nil {
+	uid := r.Context().Value(contextKeyUid).(string)
+	if err := Store.InsertNewURLPair(uid, s, req.URL); err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -82,7 +87,8 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := shorty.GenerateShortPath()
-	err = Store.InsertNewURLPair(s, string(b))
+	uid := r.Context().Value(contextKeyUid).(string)
+	err = Store.InsertNewURLPair(uid, s, string(b))
 	if err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -103,7 +109,8 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
 		return
 	}
-	l, err := Store.FindLongURL(shortPath)
+	uid := r.Context().Value(contextKeyUid).(string)
+	l, err := Store.FindLongURL(uid, shortPath)
 	if err != nil {
 		log.Printf("unable to find full URL: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
