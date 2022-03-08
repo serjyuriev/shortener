@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,6 +79,7 @@ func Test_postURLApiHandler(t *testing.T) {
 			reqBz, err := json.Marshal(reqBody)
 			require.NoError(t, err)
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewBuffer(reqBz))
+			request = request.WithContext(context.WithValue(request.Context(), contextKeyUid, uuid.New().String()))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(PostURLApiHandler)
 			h.ServeHTTP(w, request)
@@ -159,6 +162,7 @@ func Test_postURLHandler(t *testing.T) {
 			Store, err = storage.NewStore("")
 			require.NoError(t, err)
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
+			request = request.WithContext(context.WithValue(request.Context(), contextKeyUid, uuid.New().String()))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(PostURLHandler)
 			h.ServeHTTP(w, request)
@@ -224,8 +228,10 @@ func Test_getURLHandler(t *testing.T) {
 			var err error
 			Store, err = storage.NewStore("")
 			require.NoError(t, err)
-			Store.InsertNewURLPair("dfcc3691-d210-4bb8-a421-10d71d2e4dcd", "abcdef", "https://github.com/serjyuriev/")
+			uid := uuid.New().String()
+			Store.InsertNewURLPair(uid, "abcdef", "https://github.com/serjyuriev/")
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
+			request = request.WithContext(context.WithValue(request.Context(), contextKeyUid, uid))
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(GetURLHandler)
 			h.ServeHTTP(w, request)
