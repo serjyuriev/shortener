@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
@@ -229,7 +230,9 @@ func Test_getURLHandler(t *testing.T) {
 			Store, err = storage.NewFileStore("")
 			require.NoError(t, err)
 			uid := uuid.New().String()
-			Store.InsertNewURLPair(uid, "abcdef", "https://github.com/serjyuriev/")
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			Store.InsertNewURLPair(ctx, uid, "abcdef", "https://github.com/serjyuriev/")
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(GetURLHandler)

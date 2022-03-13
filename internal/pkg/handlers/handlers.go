@@ -40,7 +40,9 @@ var ShortURLHost string
 
 func GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
-	m, err := Store.FindURLsByUser(uid)
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	m, err := Store.FindURLsByUser(ctx, uid)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoURLWasFound) {
 			w.Header().Set("Content-Type", "text/plain")
@@ -88,7 +90,9 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s := shorty.GenerateShortPath()
 	uid := r.Context().Value(contextKeyUID).(string)
-	if err := Store.InsertNewURLPair(uid, s, req.URL); err != nil {
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	if err := Store.InsertNewURLPair(ctx, uid, s, req.URL); err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -130,7 +134,9 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	s := shorty.GenerateShortPath()
 	uid := r.Context().Value(contextKeyUID).(string)
-	err = Store.InsertNewURLPair(uid, s, string(b))
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err = Store.InsertNewURLPair(ctx, uid, s, string(b))
 	if err != nil {
 		log.Printf("unable to save URL: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -151,7 +157,9 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
 		return
 	}
-	l, err := Store.FindLongURL(shortPath)
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	l, err := Store.FindLongURL(ctx, shortPath)
 	if err != nil {
 		log.Printf("unable to find full URL: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -162,7 +170,7 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PingHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 	if err := Store.Ping(ctx); err != nil {
 		log.Printf("unable to ping database: %v\n", err)

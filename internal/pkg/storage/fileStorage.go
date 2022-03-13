@@ -36,7 +36,7 @@ func NewFileStore(fileStoragePath string) (Store, error) {
 	return s, nil
 }
 
-func (s *fileStore) FindLongURL(shortPath string) (string, error) {
+func (s *fileStore) FindLongURL(ctx context.Context, shortPath string) (string, error) {
 	l, ok := s.URLs[shortPath]
 	if !ok {
 		return "", ErrNoURLWasFound
@@ -44,7 +44,7 @@ func (s *fileStore) FindLongURL(shortPath string) (string, error) {
 	return l.Original, nil
 }
 
-func (s *fileStore) FindURLsByUser(userID string) (map[string]string, error) {
+func (s *fileStore) FindURLsByUser(ctx context.Context, userID string) (map[string]string, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (s *fileStore) FindURLsByUser(userID string) (map[string]string, error) {
 	return userURLs, nil
 }
 
-func (s *fileStore) InsertNewURLPair(userID, shortPath, originalURL string) error {
+func (s *fileStore) InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return err
