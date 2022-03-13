@@ -107,6 +107,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 
+	hadConflict := false
 	if err := Store.InsertNewURLPair(ctx, uid, s, req.URL); err != nil {
 		if !errors.Is(err, storage.ErrNotUniqueOriginalURL) {
 			log.Printf("unable to save URL: %v\n", err)
@@ -119,9 +120,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusConflict)
-	} else {
-		w.WriteHeader(http.StatusCreated)
+		hadConflict = true
 	}
 
 	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
@@ -135,6 +134,11 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if hadConflict {
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
 	w.Write(json)
 }
 
@@ -163,6 +167,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 
+	hadConflict := false
 	if err = Store.InsertNewURLPair(ctx, uid, s, string(b)); err != nil {
 		if !errors.Is(err, storage.ErrNotUniqueOriginalURL) {
 			log.Printf("unable to save URL: %v\n", err)
@@ -175,12 +180,16 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		hadConflict = true
+	}
+
+	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
+	w.Header().Set("Content-Type", "text/plain")
+	if hadConflict {
 		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
-	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
-	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(shortURL))
 }
 
