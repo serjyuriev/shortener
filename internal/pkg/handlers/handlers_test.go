@@ -71,7 +71,7 @@ func Test_postURLApiHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			ShortURLHost = tt.baseURL
-			Store, err = storage.NewStore("")
+			Store, err = storage.NewFileStore("")
 			require.NoError(t, err)
 			reqBody := postShortenRequest{
 				URL: tt.longURL,
@@ -159,7 +159,7 @@ func Test_postURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			ShortURLHost = tt.baseURL
-			Store, err = storage.NewStore("")
+			Store, err = storage.NewFileStore("")
 			require.NoError(t, err)
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
 			request = request.WithContext(context.WithValue(request.Context(), contextKeyUID, uuid.New().String()))
@@ -226,7 +226,7 @@ func Test_getURLHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			Store, err = storage.NewStore("")
+			Store, err = storage.NewFileStore("")
 			require.NoError(t, err)
 			uid := uuid.New().String()
 			Store.InsertNewURLPair(uid, "abcdef", "https://github.com/serjyuriev/")

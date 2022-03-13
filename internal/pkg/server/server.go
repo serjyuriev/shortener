@@ -22,10 +22,14 @@ type server struct {
 	baseURL string
 }
 
-func NewServer(address, baseURL, fileStoragePath string) (*server, error) {
+func NewServer(address, baseURL, connectionString string, useDB bool) (*server, error) {
 	var err error
 	handlers.ShortURLHost = baseURL
-	handlers.Store, err = storage.NewStore(fileStoragePath)
+	if useDB {
+		handlers.Store, err = storage.NewPgStore(connectionString)
+	} else {
+		handlers.Store, err = storage.NewFileStore(connectionString)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +46,7 @@ func (s *server) Start() error {
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
 	r.Use(middleware.Gzipper)
 	r.Use(middleware.Auth)
+	r.Get("/ping", handlers.PingHandler)
 	r.Get("/{shortPath}", handlers.GetURLHandler)
 	r.Get("/api/user/urls", handlers.GetUserURLsAPIHandler)
 	r.Post("/", handlers.PostURLHandler)

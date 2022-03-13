@@ -9,7 +9,14 @@ import (
 
 func main() {
 	cfg := config.GetConfig()
-	s, err := server.NewServer(cfg.ServerAddress, cfg.BaseURL, cfg.FileStoragePath)
+
+	var s server.Server
+	var err error
+	if cfg.DatabaseDSN == "" {
+		s, err = server.NewServer(cfg.ServerAddress, cfg.BaseURL, cfg.FileStoragePath, false)
+	} else {
+		s, err = server.NewServer(cfg.ServerAddress, cfg.BaseURL, cfg.DatabaseDSN, true)
+	}
 	if err != nil {
 		log.Fatalf("unable to start server: %v", err)
 	}

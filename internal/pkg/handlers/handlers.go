@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/serjyuriev/shortener/internal/pkg/shorty"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
@@ -157,4 +159,17 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Location", string(l))
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := Store.Ping(ctx); err != nil {
+		log.Printf("unable to ping database: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte("ok"))
 }
