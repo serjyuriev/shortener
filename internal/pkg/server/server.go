@@ -51,6 +51,7 @@ func (s *server) Start() error {
 	r.Get("/api/user/urls", handlers.GetUserURLsAPIHandler)
 	r.Post("/", handlers.PostURLHandler)
 	r.Post("/api/shorten", handlers.PostURLApiHandler)
+	r.Post("/api/shorten/batch", handlers.PostBatchHandler)
 	log.Printf("starting server on %s\n", s.address)
 	return http.ListenAndServe(s.address, r)
 }

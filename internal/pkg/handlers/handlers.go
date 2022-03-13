@@ -35,6 +35,20 @@ type postShortenResponse struct {
 	Result string `json:"result"`
 }
 
+type postBatchSingleRequest struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type postBatchRequest []postBatchSingleRequest
+
+type postBatchSingleResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+type postBatchResponse []postBatchSingleResponse
+
 var Store storage.Store
 var ShortURLHost string
 
@@ -167,6 +181,44 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Location", string(l))
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func PostBatchHandler(w http.ResponseWriter, r *http.Request) {
+	uid := r.Context().Value(contextKeyUID).(string)
+	var req postBatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("unable to decode request's body: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	var res postBatchResponse
+	m := make(map[string]string)
+	for _, sreq := range req {
+		s := shorty.GenerateShortPath()
+		sres := postBatchSingleResponse{
+			CorrelationID: sreq.CorrelationID,
+			ShortURL:      fmt.Sprintf("%s/%s", ShortURLHost, s),
+		}
+		res = append(res, sres)
+		m[s] = sreq.OriginalURL
+	}
+
+	if err := Store.InsertManyURLs(r.Context(), uid, m); err != nil {
+		log.Printf("unable to insert urls: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	json, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("unable to marshal response: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(json)
 }
 
 func PingHandler(w http.ResponseWriter, r *http.Request) {

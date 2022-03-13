@@ -13,6 +13,7 @@ var (
 type Store interface {
 	FindLongURL(ctx context.Context, shortPath string) (string, error)
 	FindURLsByUser(ctx context.Context, userID string) (map[string]string, error)
+	InsertManyURLs(ctx context.Context, userID string, urls map[string]string) error
 	InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error
 	Ping(ctx context.Context) error
 }

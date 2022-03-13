@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -20,6 +21,10 @@ func NewPgStore(connectionString string) (Store, error) {
 		log.Printf("unable to open database: %v\n", err)
 		return nil, err
 	}
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(20)
+	db.SetConnMaxIdleTime(time.Second * 30)
+	db.SetConnMaxLifetime(time.Minute * 2)
 	s := &pgStore{
 		cs: connectionString,
 		db: db,
@@ -78,6 +83,37 @@ func (s *pgStore) FindURLsByUser(ctx context.Context, userID string) (map[string
 	}
 
 	return urls, nil
+}
+
+func (s *pgStore) InsertManyURLs(ctx context.Context, userID string, urls map[string]string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("unable to parse user uuid: %v\n", err)
+		return err
+	}
+
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: false})
+	if err != nil {
+		log.Printf("unable to start transaction: %v\n", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT INTO urls(short_id, original_url, added_by_user) VALUES ($1, $2, $3)")
+	if err != nil {
+		log.Printf("unable to prepare sql statement: %v\n", err)
+		return err
+	}
+	defer stmt.Close()
+
+	for short, long := range urls {
+		if _, err = stmt.Exec(short, long, uid.String()); err != nil {
+			log.Printf("unable to execute sql statement: %v\n", err)
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *pgStore) InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error {

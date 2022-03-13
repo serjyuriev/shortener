@@ -61,6 +61,33 @@ func (s *fileStore) FindURLsByUser(ctx context.Context, userID string) (map[stri
 	return userURLs, nil
 }
 
+func (s *fileStore) InsertManyURLs(ctx context.Context, userID string, urls map[string]string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+
+	oldMap := make(map[string]link)
+	for v, k := range s.URLs {
+		oldMap[v] = k
+	}
+
+	for short, long := range urls {
+		newLink := link{
+			Original: long,
+			User:     uid,
+		}
+		s.URLs[short] = newLink
+	}
+	if s.useFileStorage {
+		if err := s.writeDataToFile(); err != nil {
+			s.URLs = oldMap
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *fileStore) InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
