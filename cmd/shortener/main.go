@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
+
 	cfg := config.GetConfig()
+	log.Println(cfg)
 
 	var s server.Server
 	var err error

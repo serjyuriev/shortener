@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -28,12 +29,22 @@ func NewFileStore(fileStoragePath string) (Store, error) {
 	}
 	if s.useFileStorage {
 		if err := s.loadDataFromFile(); err != nil {
-			return nil, err
+			// log.Printf("unable to load data from file: %v\n", err)
+			return nil, fmt.Errorf("unable to load data from file: %w", err)
 		}
 	} else {
 		s.URLs = make(map[string]link)
 	}
 	return s, nil
+}
+
+func (s *fileStore) FindByLongURL(ctx context.Context, long string) (string, error) {
+	for _, v := range s.URLs {
+		if v.Original == long {
+			return v.Original, nil
+		}
+	}
+	return "", ErrNoURLWasFound
 }
 
 func (s *fileStore) FindLongURL(ctx context.Context, shortPath string) (string, error) {

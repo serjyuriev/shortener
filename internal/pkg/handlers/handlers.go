@@ -106,11 +106,24 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
+
 	if err := Store.InsertNewURLPair(ctx, uid, s, req.URL); err != nil {
-		log.Printf("unable to save URL: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+		if !errors.Is(err, storage.ErrNotUniqueOriginalURL) {
+			log.Printf("unable to save URL: %v\n", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		s, err = Store.FindByLongURL(r.Context(), req.URL)
+		if err != nil {
+			log.Printf("unable to find original URL: %v\n", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
 	}
+
 	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
 	res := postShortenResponse{
 		Result: shortURL,
@@ -122,7 +135,6 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 	w.Write(json)
 }
 
@@ -150,15 +162,25 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
-	err = Store.InsertNewURLPair(ctx, uid, s, string(b))
-	if err != nil {
-		log.Printf("unable to save URL: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+
+	if err = Store.InsertNewURLPair(ctx, uid, s, string(b)); err != nil {
+		if !errors.Is(err, storage.ErrNotUniqueOriginalURL) {
+			log.Printf("unable to save URL: %v\n", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		s, err = Store.FindByLongURL(r.Context(), string(b))
+		if err != nil {
+			log.Printf("unable to find original URL: %v\n", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
 	}
 	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(shortURL))
 }
 

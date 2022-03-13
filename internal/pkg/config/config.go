@@ -18,6 +18,18 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
 }
 
+func (c *Config) String() string {
+	return fmt.Sprintf(`
+
+	loaded configuration
+		BaseURL:         %s
+		DatabaseDSN:     %s
+		FileStoragePath: %s
+		Protocol:        %s
+		ServerAddress:   %s
+	`, c.BaseURL, c.DatabaseDSN, c.FileStoragePath, c.Protocol, c.ServerAddress)
+}
+
 var once sync.Once
 var cfg *Config
 
@@ -37,7 +49,6 @@ func GetConfig() *Config {
 		if !strings.Contains(cfg.BaseURL, cfg.ServerAddress) {
 			cfg.BaseURL = fmt.Sprintf("%s://%s", cfg.Protocol, cfg.ServerAddress)
 		}
-		log.Println(cfg)
 	})
 	return cfg
 }

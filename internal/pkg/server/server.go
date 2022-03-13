@@ -2,6 +2,7 @@ package server
 
 import (
 	"compress/gzip"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -31,7 +32,7 @@ func NewServer(address, baseURL, connectionString string, useDB bool) (*server, 
 		handlers.Store, err = storage.NewFileStore(connectionString)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create new store:\n%w", err)
 	}
 	return &server{
 		address: address,

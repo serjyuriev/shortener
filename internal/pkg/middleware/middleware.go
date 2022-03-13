@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -41,7 +42,6 @@ func Auth(next http.Handler) http.Handler {
 			http.SetCookie(w, newCookie)
 			ctx := context.WithValue(r.Context(), contextKeyUID, uid.String())
 			next.ServeHTTP(w, r.WithContext(ctx))
-			// next.ServeHTTP(w, r)
 			return
 		}
 
@@ -63,7 +63,6 @@ func Auth(next http.Handler) http.Handler {
 		}
 		ctx := context.WithValue(r.Context(), contextKeyUID, uid.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
-		// next.ServeHTTP(w, r)
 	})
 }
 
@@ -93,7 +92,6 @@ func Gzipper(next http.Handler) http.Handler {
 
 func generateNewUserIDCookie() (uuid.UUID, string) {
 	uid := uuid.New()
-
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(uid.String()))
 	cookie := append([]byte(uid.String()), h.Sum(nil)...)
@@ -103,7 +101,7 @@ func generateNewUserIDCookie() (uuid.UUID, string) {
 func validateCookie(cookie string) (uuid.UUID, error) {
 	decodedCookie, err := hex.DecodeString(cookie)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("unable to decode cookie:\n%w", err)
 	}
 
 	h := hmac.New(sha256.New, key)
@@ -112,7 +110,7 @@ func validateCookie(cookie string) (uuid.UUID, error) {
 	if hmac.Equal(decodedCookie[36:], h.Sum(nil)) {
 		uid, err := uuid.Parse(string(decodedCookie[:36]))
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("unable to parse uuid:\n%w", err)
 		}
 		return uid, nil
 	}
