@@ -68,6 +68,15 @@ func (s *pgStore) FindURLsByUser(ctx context.Context, userID string) (map[string
 		urls[short] = long
 	}
 
+	if rows.Err() != nil {
+		log.Printf("unable to scan values: %v\n", err)
+		return nil, rows.Err()
+	}
+
+	if len(urls) == 0 {
+		return nil, ErrNoURLWasFound
+	}
+
 	return urls, nil
 }
 
