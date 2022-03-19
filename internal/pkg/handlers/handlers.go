@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/serjyuriev/shortener/internal/pkg/config"
+	"github.com/serjyuriev/shortener/internal/pkg/service"
 	"github.com/serjyuriev/shortener/internal/pkg/shorty"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
@@ -20,37 +22,59 @@ type ContextKey string
 
 var contextKeyUID = ContextKey("uid")
 
-type userURLs struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
+type Handlers interface {
+	GetURLHandler(w http.ResponseWriter, r *http.Request)
+	GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request)
+	PingHandler(w http.ResponseWriter, r *http.Request)
+	PostBatchHandler(w http.ResponseWriter, r *http.Request)
+	PostURLApiHandler(w http.ResponseWriter, r *http.Request)
+	PostURLHandler(w http.ResponseWriter, r *http.Request)
 }
 
-type postShortenRequest struct {
-	URL string `json:"url"`
+type handlers struct {
+	baseURL string
+	svc     service.Service
 }
 
-type postShortenResponse struct {
-	Result string `json:"result"`
+func MakeHandlers() (Handlers, error) {
+	svc, err := service.NewService()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create new service:\n%w", err)
+	}
+
+	cfg := config.GetConfig()
+	return &handlers{
+		baseURL: cfg.BaseURL,
+		svc:     svc,
+	}, nil
 }
 
-type postBatchSingleRequest struct {
-	CorrelationID string `json:"correlation_id"`
-	OriginalURL   string `json:"original_url"`
+// GetURLHandler searches service store for provided short URL
+// and, if such URL is found, sends a response,
+// redirecting to the corresponding long URL.
+func (h *handlers) GetURLHandler(w http.ResponseWriter, r *http.Request) {
+	shortPath := strings.TrimPrefix(r.URL.Path, "/")
+	if shortPath == "" {
+		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	original, err := h.svc.FindOriginalURL(ctx, shortPath)
+	if err != nil {
+		log.Printf("unable to find full URL: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	w.Header().Add("Location", string(original))
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-type postBatchSingleResponse struct {
-	CorrelationID string `json:"correlation_id"`
-	ShortURL      string `json:"short_url"`
-}
-
-var Store storage.Store
-var ShortURLHost string
-
-func GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handlers) GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
-	m, err := Store.FindURLsByUser(ctx, uid)
+	m, err := h.svc.FindURLsByUser(ctx, uid)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoURLWasFound) {
 			w.Header().Set("Content-Type", "text/plain")
@@ -65,7 +89,7 @@ func GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	res := make([]userURLs, 0)
 	for key, val := range m {
 		res = append(res, userURLs{
-			ShortURL:    fmt.Sprintf("%s/%s", ShortURLHost, key),
+			ShortURL:    fmt.Sprintf("%s/%s", h.baseURL, key),
 			OriginalURL: val,
 		})
 	}
@@ -80,7 +104,58 @@ func GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handlers) PingHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	if err := h.svc.Ping(ctx); err != nil {
+		log.Printf("unable to ping database: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte("ok"))
+}
+
+func (h *handlers) PostBatchHandler(w http.ResponseWriter, r *http.Request) {
+	uid := r.Context().Value(contextKeyUID).(string)
+	var req []postBatchSingleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("unable to decode request's body: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	res := make([]postBatchSingleResponse, 0)
+	m := make(map[string]string)
+	for _, sreq := range req {
+		s := shorty.GenerateShortPath()
+		sres := postBatchSingleResponse{
+			CorrelationID: sreq.CorrelationID,
+			ShortURL:      fmt.Sprintf("%s/%s", h.baseURL, s),
+		}
+		res = append(res, sres)
+		m[s] = sreq.OriginalURL
+	}
+
+	if err := h.svc.InsertManyURLs(r.Context(), uid, m); err != nil {
+		log.Printf("unable to insert urls: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	json, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("unable to marshal response: %v\n", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(json)
+}
+
+func (h *handlers) PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	var req postShortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("unable to decode request's body: %v\n", err)
@@ -102,13 +177,13 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	hadConflict := false
-	if err := Store.InsertNewURLPair(ctx, uid, s, req.URL); err != nil {
+	if err := h.svc.InsertNewURLPair(ctx, uid, s, req.URL); err != nil {
 		if !errors.Is(err, storage.ErrNotUniqueOriginalURL) {
 			log.Printf("unable to save URL: %v\n", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		s, err = Store.FindByLongURL(r.Context(), req.URL)
+		s, err = h.svc.FindByOriginalURL(r.Context(), req.URL)
 		if err != nil {
 			log.Printf("unable to find original URL: %v\n", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -117,7 +192,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 		hadConflict = true
 	}
 
-	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
+	shortURL := fmt.Sprintf("%s/%s", h.baseURL, s)
 	res := postShortenResponse{
 		Result: shortURL,
 	}
@@ -139,7 +214,7 @@ func PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 // PostURLHandler reads a long URL provided in request body
 // and, if successful, creates a corresponding short URL,
 // storing both in service store.
-func PostURLHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handlers) PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("unable to read request's body: %v\n", err)
@@ -162,13 +237,13 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	hadConflict := false
-	if err = Store.InsertNewURLPair(ctx, uid, s, string(b)); err != nil {
+	if err = h.svc.InsertNewURLPair(ctx, uid, s, string(b)); err != nil {
 		if !errors.Is(err, storage.ErrNotUniqueOriginalURL) {
 			log.Printf("unable to save URL: %v\n", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		s, err = Store.FindByLongURL(r.Context(), string(b))
+		s, err = h.svc.FindByOriginalURL(r.Context(), string(b))
 		if err != nil {
 			log.Printf("unable to find original URL: %v\n", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -177,7 +252,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		hadConflict = true
 	}
 
-	shortURL := fmt.Sprintf("%s/%s", ShortURLHost, s)
+	shortURL := fmt.Sprintf("%s/%s", h.baseURL, s)
 	w.Header().Set("Content-Type", "text/plain")
 	if hadConflict {
 		w.WriteHeader(http.StatusConflict)
@@ -187,74 +262,25 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-// GetURLHandler searches service store for provided short URL
-// and, if such URL is found, sends a response,
-// redirecting to the corresponding long URL.
-func GetURLHandler(w http.ResponseWriter, r *http.Request) {
-	shortPath := strings.TrimPrefix(r.URL.Path, "/")
-	if shortPath == "" {
-		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
-		return
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	l, err := Store.FindLongURL(ctx, shortPath)
-	if err != nil {
-		log.Printf("unable to find full URL: %v\n", err)
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	w.Header().Add("Location", string(l))
-	w.WriteHeader(http.StatusTemporaryRedirect)
+type userURLs struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
-func PostBatchHandler(w http.ResponseWriter, r *http.Request) {
-	uid := r.Context().Value(contextKeyUID).(string)
-	var req []postBatchSingleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("unable to decode request's body: %v\n", err)
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	res := make([]postBatchSingleResponse, 0)
-	m := make(map[string]string)
-	for _, sreq := range req {
-		s := shorty.GenerateShortPath()
-		sres := postBatchSingleResponse{
-			CorrelationID: sreq.CorrelationID,
-			ShortURL:      fmt.Sprintf("%s/%s", ShortURLHost, s),
-		}
-		res = append(res, sres)
-		m[s] = sreq.OriginalURL
-	}
-
-	if err := Store.InsertManyURLs(r.Context(), uid, m); err != nil {
-		log.Printf("unable to insert urls: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	json, err := json.Marshal(res)
-	if err != nil {
-		log.Printf("unable to marshal response: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(json)
+type postShortenRequest struct {
+	URL string `json:"url"`
 }
 
-func PingHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	if err := Store.Ping(ctx); err != nil {
-		log.Printf("unable to ping database: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("ok"))
+type postShortenResponse struct {
+	Result string `json:"result"`
+}
+
+type postBatchSingleRequest struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type postBatchSingleResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/serjyuriev/shortener/internal/pkg/storage"
+	"github.com/serjyuriev/shortener/internal/pkg/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,10 +70,12 @@ func Test_postURLApiHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
-			ShortURLHost = tt.baseURL
-			Store, err = storage.NewFileStore("")
+			svc, err := service.NewService()
 			require.NoError(t, err)
+			h := handlers{
+				baseURL: tt.baseURL,
+				svc:     svc,
+			}
 			reqBody := postShortenRequest{
 				URL: tt.longURL,
 			}
@@ -82,8 +84,9 @@ func Test_postURLApiHandler(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewBuffer(reqBz))
 			request = request.WithContext(context.WithValue(request.Context(), contextKeyUID, uuid.New().String()))
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(PostURLApiHandler)
-			h.ServeHTTP(w, request)
+			// h := http.HandlerFunc(PostURLApiHandler)
+			hf := http.HandlerFunc(h.PostURLApiHandler)
+			hf.ServeHTTP(w, request)
 			result := w.Result()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
@@ -158,15 +161,17 @@ func Test_postURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
-			ShortURLHost = tt.baseURL
-			Store, err = storage.NewFileStore("")
+			svc, err := service.NewService()
 			require.NoError(t, err)
+			h := handlers{
+				baseURL: tt.baseURL,
+				svc:     svc,
+			}
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.longURL))
 			request = request.WithContext(context.WithValue(request.Context(), contextKeyUID, uuid.New().String()))
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(PostURLHandler)
-			h.ServeHTTP(w, request)
+			hf := http.HandlerFunc(h.PostURLHandler)
+			hf.ServeHTTP(w, request)
 			result := w.Result()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
@@ -226,17 +231,19 @@ func Test_getURLHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
-			Store, err = storage.NewFileStore("")
+			svc, err := service.NewService()
 			require.NoError(t, err)
+			h := handlers{
+				svc: svc,
+			}
 			uid := uuid.New().String()
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
-			Store.InsertNewURLPair(ctx, uid, "abcdef", "https://github.com/serjyuriev/")
+			h.svc.InsertNewURLPair(ctx, uid, "abcdef", "https://github.com/serjyuriev/")
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(GetURLHandler)
-			h.ServeHTTP(w, request)
+			hf := http.HandlerFunc(h.GetURLHandler)
+			hf.ServeHTTP(w, request)
 			result := w.Result()
 			defer result.Body.Close()
 

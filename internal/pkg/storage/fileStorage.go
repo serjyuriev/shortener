@@ -38,16 +38,16 @@ func NewFileStore(fileStoragePath string) (Store, error) {
 	return s, nil
 }
 
-func (s *fileStore) FindByLongURL(ctx context.Context, long string) (string, error) {
+func (s *fileStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	for _, v := range s.URLs {
-		if v.Original == long {
+		if v.Original == originalURL {
 			return v.Original, nil
 		}
 	}
 	return "", ErrNoURLWasFound
 }
 
-func (s *fileStore) FindLongURL(ctx context.Context, shortPath string) (string, error) {
+func (s *fileStore) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
 	l, ok := s.URLs[shortPath]
 	if !ok {
 		return "", ErrNoURLWasFound
@@ -55,14 +55,10 @@ func (s *fileStore) FindLongURL(ctx context.Context, shortPath string) (string, 
 	return l.Original, nil
 }
 
-func (s *fileStore) FindURLsByUser(ctx context.Context, userID string) (map[string]string, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, err
-	}
+func (s *fileStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error) {
 	userURLs := make(map[string]string)
 	for k, v := range s.URLs {
-		if v.User == uid {
+		if v.User == userID {
 			userURLs[k] = v.Original
 		}
 	}
@@ -72,12 +68,7 @@ func (s *fileStore) FindURLsByUser(ctx context.Context, userID string) (map[stri
 	return userURLs, nil
 }
 
-func (s *fileStore) InsertManyURLs(ctx context.Context, userID string, urls map[string]string) error {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return err
-	}
-
+func (s *fileStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map[string]string) error {
 	oldMap := make(map[string]link)
 	for v, k := range s.URLs {
 		oldMap[v] = k
@@ -86,7 +77,7 @@ func (s *fileStore) InsertManyURLs(ctx context.Context, userID string, urls map[
 	for short, long := range urls {
 		newLink := link{
 			Original: long,
-			User:     uid,
+			User:     userID,
 		}
 		s.URLs[short] = newLink
 	}
@@ -99,14 +90,10 @@ func (s *fileStore) InsertManyURLs(ctx context.Context, userID string, urls map[
 	return nil
 }
 
-func (s *fileStore) InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return err
-	}
+func (s *fileStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error {
 	newLink := link{
 		Original: originalURL,
-		User:     uid,
+		User:     userID,
 	}
 	s.URLs[shortPath] = newLink
 	if s.useFileStorage {

@@ -24,3 +24,6 @@ vendor/
 
 # Docker files
 build/
+
+# Default storage file
+shorten.json

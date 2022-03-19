@@ -9,9 +9,9 @@ import (
 	"github.com/go-chi/chi"
 	chimid "github.com/go-chi/chi/middleware"
 
+	"github.com/serjyuriev/shortener/internal/pkg/config"
 	"github.com/serjyuriev/shortener/internal/pkg/handlers"
 	"github.com/serjyuriev/shortener/internal/pkg/middleware"
-	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
 type Server interface {
@@ -19,24 +19,20 @@ type Server interface {
 }
 
 type server struct {
-	address string
-	baseURL string
+	address  string
+	handlers handlers.Handlers
 }
 
-func NewServer(address, baseURL, connectionString string, useDB bool) (*server, error) {
-	var err error
-	handlers.ShortURLHost = baseURL
-	if useDB {
-		handlers.Store, err = storage.NewPgStore(connectionString)
-	} else {
-		handlers.Store, err = storage.NewFileStore(connectionString)
-	}
+func NewServer() (Server, error) {
+	h, err := handlers.MakeHandlers()
 	if err != nil {
-		return nil, fmt.Errorf("unable to create new store:\n%w", err)
+		return nil, fmt.Errorf("unable to make handlers:\n%w", err)
 	}
+
+	cfg := config.GetConfig()
 	return &server{
-		address: address,
-		baseURL: baseURL,
+		address:  cfg.ServerAddress,
+		handlers: h,
 	}, nil
 }
 
@@ -47,12 +43,12 @@ func (s *server) Start() error {
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
 	r.Use(middleware.Gzipper)
 	r.Use(middleware.Auth)
-	r.Get("/ping", handlers.PingHandler)
-	r.Get("/{shortPath}", handlers.GetURLHandler)
-	r.Get("/api/user/urls", handlers.GetUserURLsAPIHandler)
-	r.Post("/", handlers.PostURLHandler)
-	r.Post("/api/shorten", handlers.PostURLApiHandler)
-	r.Post("/api/shorten/batch", handlers.PostBatchHandler)
+	r.Get("/ping", s.handlers.PingHandler)
+	r.Get("/{shortPath}", s.handlers.GetURLHandler)
+	r.Get("/api/user/urls", s.handlers.GetUserURLsAPIHandler)
+	r.Post("/", s.handlers.PostURLHandler)
+	r.Post("/api/shorten", s.handlers.PostURLApiHandler)
+	r.Post("/api/shorten/batch", s.handlers.PostBatchHandler)
 	log.Printf("starting server on %s\n", s.address)
 	return http.ListenAndServe(s.address, r)
 }
