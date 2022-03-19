@@ -25,8 +25,6 @@ type userURLs struct {
 	OriginalURL string `json:"original_url"`
 }
 
-type getUserURLsResponse []userURLs
-
 type postShortenRequest struct {
 	URL string `json:"url"`
 }
@@ -40,14 +38,10 @@ type postBatchSingleRequest struct {
 	OriginalURL   string `json:"original_url"`
 }
 
-type postBatchRequest []postBatchSingleRequest
-
 type postBatchSingleResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
-
-type postBatchResponse []postBatchSingleResponse
 
 var Store storage.Store
 var ShortURLHost string
@@ -68,7 +62,7 @@ func GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	res := make(getUserURLsResponse, 0)
+	res := make([]userURLs, 0)
 	for key, val := range m {
 		res = append(res, userURLs{
 			ShortURL:    fmt.Sprintf("%s/%s", ShortURLHost, key),
@@ -216,14 +210,14 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func PostBatchHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
-	var req postBatchRequest
+	var req []postBatchSingleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("unable to decode request's body: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	var res postBatchResponse
+	res := make([]postBatchSingleResponse, 0)
 	m := make(map[string]string)
 	for _, sreq := range req {
 		s := shorty.GenerateShortPath()
