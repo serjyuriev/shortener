@@ -18,6 +18,8 @@ type pgStore struct {
 	cs string
 }
 
+var ErrShortenedDeleted = fmt.Errorf("shortened url is deleted")
+
 func NewPgStore(connectionString string) (Store, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
@@ -36,7 +38,8 @@ func NewPgStore(connectionString string) (Store, error) {
 		`CREATE TABLE IF NOT EXISTS urls (
 			short_id TEXT PRIMARY KEY,
 			original_url TEXT NOT NULL,
-			added_by_user TEXT NOT NULL
+			added_by_user TEXT NOT NULL,
+			is_deleted BOOLEAN NOT NULL
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON urls (original_url);`); err != nil {
 		return nil, fmt.Errorf("unable to execute create statements:\n%w", err)
@@ -56,11 +59,16 @@ func (s *pgStore) FindByOriginalURL(ctx context.Context, originalURL string) (st
 }
 
 func (s *pgStore) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE short_id = $1", shortPath)
+	row := s.db.QueryRowContext(ctx, "SELECT original_url, is_deleted FROM urls WHERE short_id = $1", shortPath)
 	var long string
-	row.Scan(&long)
+	var isDeleted bool
+	row.Scan(&long, &isDeleted)
 	if row.Err() != nil {
 		return "", fmt.Errorf("unable to execute query:\n%w", row.Err())
+	}
+
+	if isDeleted {
+		return "", ErrShortenedDeleted
 	}
 
 	return long, nil
@@ -116,8 +124,12 @@ func (s *pgStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map
 }
 
 func (s *pgStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error {
-	if _, err := s.db.ExecContext(ctx, "INSERT INTO urls VALUES ($1, $2, $3)",
-		shortPath, originalURL, userID.String()); err != nil {
+	if _, err := s.db.ExecContext(ctx, "INSERT INTO urls VALUES ($1, $2, $3, $4)",
+		shortPath,
+		originalURL,
+		userID.String(),
+		false,
+	); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {

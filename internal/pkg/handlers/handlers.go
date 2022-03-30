@@ -62,6 +62,10 @@ func (h *handlers) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	original, err := h.svc.FindOriginalURL(ctx, shortPath)
 	if err != nil {
+		if errors.Is(err, storage.ErrShortenedDeleted) {
+			w.WriteHeader(http.StatusGone)
+			return
+		}
 		log.Printf("unable to find full URL: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
