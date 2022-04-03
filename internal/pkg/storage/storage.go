@@ -11,9 +11,11 @@ var (
 	ErrNotImplementedYet    = errors.New("method not implemented yet")
 	ErrNoURLWasFound        = errors.New("no URL was found")
 	ErrNotUniqueOriginalURL = errors.New("original URL already presented")
+	ErrShortenedDeleted     = errors.New("shortened url is deleted")
 )
 
 type Store interface {
+	DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error
 	FindByOriginalURL(ctx context.Context, originalURL string) (string, error)
 	FindOriginalURL(ctx context.Context, shortPath string) (string, error)
 	FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error)

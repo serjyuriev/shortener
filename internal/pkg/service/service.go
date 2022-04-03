@@ -10,6 +10,7 @@ import (
 )
 
 type Service interface {
+	DeleteURLs(ctx context.Context, userID string, urls []string) error
 	FindByOriginalURL(ctx context.Context, originalURL string) (string, error)
 	FindOriginalURL(ctx context.Context, shortPath string) (string, error)
 	FindURLsByUser(ctx context.Context, userID string) (map[string]string, error)
@@ -35,7 +36,21 @@ func NewService() (Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new storage:\n%w", err)
 	}
+
 	return &service{store: s}, nil
+}
+
+func (s *service) DeleteURLs(ctx context.Context, userID string, urls []string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("unable to parse user id:\n%w", err)
+	}
+
+	if err = s.store.DeleteManyURLs(ctx, uid, urls); err != nil {
+		return fmt.Errorf("unable to delete urls:\n%w", err)
+	}
+
+	return nil
 }
 
 func (s *service) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {

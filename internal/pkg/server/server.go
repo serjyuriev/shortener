@@ -43,6 +43,7 @@ func (s *server) Start() error {
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
 	r.Use(middleware.Gzipper)
 	r.Use(middleware.Auth)
+	r.Delete("/api/user/urls", s.handlers.DeleteURLsHandler)
 	r.Get("/ping", s.handlers.PingHandler)
 	r.Get("/{shortPath}", s.handlers.GetURLHandler)
 	r.Get("/api/user/urls", s.handlers.GetUserURLsAPIHandler)

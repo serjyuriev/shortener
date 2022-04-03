@@ -23,6 +23,7 @@ type ContextKey string
 var contextKeyUID = ContextKey("uid")
 
 type Handlers interface {
+	DeleteURLsHandler(w http.ResponseWriter, r *http.Request)
 	GetURLHandler(w http.ResponseWriter, r *http.Request)
 	GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request)
 	PingHandler(w http.ResponseWriter, r *http.Request)
@@ -47,6 +48,28 @@ func MakeHandlers() (Handlers, error) {
 		baseURL: cfg.BaseURL,
 		svc:     svc,
 	}, nil
+}
+
+func (h *handlers) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
+	uid := r.Context().Value(contextKeyUID).(string)
+
+	var req []string
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("unable to decode request's body: %v\n", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if len(req) == 0 {
+		http.Error(w, "Body cannot be empty.", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+
+	if err := h.svc.DeleteURLs(r.Context(), uid, req); err != nil {
+		log.Printf("unable to delete provided urls: %v\n", err)
+	}
 }
 
 // GetURLHandler searches service store for provided short URL

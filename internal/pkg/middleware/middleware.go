@@ -37,7 +37,8 @@ func Auth(next http.Handler) http.Handler {
 			newCookie := &http.Cookie{
 				Name:    cookieName,
 				Value:   newCookieValue,
-				Expires: time.Now().Add(60 * time.Second).UTC(),
+				Expires: time.Now().Add(600 * time.Second).UTC(),
+				Path:    "/",
 			}
 			http.SetCookie(w, newCookie)
 			ctx := context.WithValue(r.Context(), contextKeyUID, uid.String())

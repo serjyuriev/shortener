@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,8 +18,6 @@ type pgStore struct {
 	db *sql.DB
 	cs string
 }
-
-var ErrShortenedDeleted = fmt.Errorf("shortened url is deleted")
 
 func NewPgStore(connectionString string) (Store, error) {
 	db, err := sql.Open("pgx", connectionString)
@@ -48,11 +47,41 @@ func NewPgStore(connectionString string) (Store, error) {
 	return s, nil
 }
 
+func (s *pgStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: false})
+	if err != nil {
+		return fmt.Errorf("unable to begin transaction:\n%w", err)
+	}
+	defer tx.Rollback()
+
+	cmd := fmt.Sprintf(
+		"UPDATE urls SET is_deleted = TRUE WHERE added_by_user = $1 AND short_id in ('%s');",
+		strings.Join(urls, "','"),
+	)
+
+	stmt, err := tx.Prepare(cmd)
+	if err != nil {
+		return fmt.Errorf("unable to prepare sql statement:\n%w", err)
+	}
+	defer stmt.Close()
+
+	if _, err = stmt.Exec(userID.String()); err != nil {
+		return fmt.Errorf("unable to execute sql statement:\n%w", err)
+	}
+
+	return tx.Commit()
+}
+
 func (s *pgStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT short_id FROM urls WHERE original_url = $1", originalURL)
-	row.Scan(&originalURL)
+	row := s.db.QueryRowContext(ctx, "SELECT short_id, is_deleted FROM urls WHERE original_url = $1", originalURL)
+	var isDeleted bool
+	row.Scan(&originalURL, &isDeleted)
 	if row.Err() != nil {
 		return "", fmt.Errorf("unable to execute query:\n%w", row.Err())
+	}
+
+	if isDeleted {
+		return "", ErrShortenedDeleted
 	}
 
 	return originalURL, nil
@@ -75,7 +104,7 @@ func (s *pgStore) FindOriginalURL(ctx context.Context, shortPath string) (string
 }
 
 func (s *pgStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT short_id, original_url FROM urls WHERE added_by_user = $1", userID.String())
+	rows, err := s.db.QueryContext(ctx, "SELECT short_id, original_url FROM urls WHERE added_by_user = $1 AND is_deleted != TRUE", userID.String())
 	if err != nil {
 		return nil, fmt.Errorf("unable to execute query:\n%w", err)
 	}
@@ -108,7 +137,7 @@ func (s *pgStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare("INSERT INTO urls(short_id, original_url, added_by_user) VALUES ($1, $2, $3)")
+	stmt, err := tx.Prepare("INSERT INTO urls(short_id, original_url, added_by_user, is_deleted) VALUES ($1, $2, $3, FALSE)")
 	if err != nil {
 		return fmt.Errorf("unable to prepare sql statement:\n%w", err)
 	}

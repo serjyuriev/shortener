@@ -38,6 +38,10 @@ func NewFileStore(fileStoragePath string) (Store, error) {
 	return s, nil
 }
 
+func (s *fileStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error {
+	return ErrNotImplementedYet
+}
+
 func (s *fileStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	for _, v := range s.URLs {
 		if v.Original == originalURL {
