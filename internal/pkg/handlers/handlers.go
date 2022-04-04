@@ -65,11 +65,8 @@ func (h *handlers) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.svc.DeleteURLs(uid, req)
 	w.WriteHeader(http.StatusAccepted)
-
-	if err := h.svc.DeleteURLs(r.Context(), uid, req); err != nil {
-		log.Printf("unable to delete provided urls: %v\n", err)
-	}
 }
 
 // GetURLHandler searches service store for provided short URL
