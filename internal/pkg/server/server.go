@@ -14,15 +14,17 @@ import (
 	"github.com/serjyuriev/shortener/internal/pkg/middleware"
 )
 
+// Server provides method for application server management.
 type Server interface {
 	Start() error
 }
 
 type server struct {
 	address  string
-	handlers handlers.Handlers
+	handlers *handlers.Handlers
 }
 
+// NewServer initializes server.
 func NewServer() (Server, error) {
 	h, err := handlers.MakeHandlers()
 	if err != nil {

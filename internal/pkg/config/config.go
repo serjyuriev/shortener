@@ -10,6 +10,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Config contains information about application configuration.
 type Config struct {
 	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
@@ -18,6 +19,7 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
 }
 
+// String prints current configuration.
 func (c *Config) String() string {
 	return fmt.Sprintf(`
 
@@ -33,6 +35,8 @@ func (c *Config) String() string {
 var once sync.Once
 var cfg *Config
 
+// GetConfig parses flags and environment variables and creates current configuration object.
+// Environment variables will override values provided by flags.
 func GetConfig() *Config {
 	once.Do(func() {
 		cfg = &Config{}

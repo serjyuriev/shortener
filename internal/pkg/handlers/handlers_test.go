@@ -60,7 +60,7 @@ func TestPostBatchHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc, err := service.NewService()
 			require.NoError(t, err)
-			h := handlers{
+			h := &Handlers{
 				baseURL: tt.baseURL,
 				svc:     svc,
 			}
@@ -152,7 +152,7 @@ func Test_postURLApiHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc, err := service.NewService()
 			require.NoError(t, err)
-			h := handlers{
+			h := &Handlers{
 				baseURL: tt.baseURL,
 				svc:     svc,
 			}
@@ -243,7 +243,7 @@ func Test_postURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc, err := service.NewService()
 			require.NoError(t, err)
-			h := handlers{
+			h := &Handlers{
 				baseURL: tt.baseURL,
 				svc:     svc,
 			}
@@ -313,7 +313,7 @@ func Test_getURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc, err := service.NewService()
 			require.NoError(t, err)
-			h := handlers{
+			h := &Handlers{
 				svc: svc,
 			}
 			uid := uuid.New().String()
@@ -338,7 +338,7 @@ func BenchmarkGetURLHandler(b *testing.B) {
 	if err != nil {
 		b.Errorf("unable to initiazlize service: %v\n", err)
 	}
-	h := handlers{
+	h := &Handlers{
 		svc: svc,
 	}
 	uid := uuid.New().String()
@@ -358,7 +358,7 @@ func BenchmarkGetURLHandler(b *testing.B) {
 
 func BenchmarkPostURLHandler(b *testing.B) {
 	svc, _ := service.NewService()
-	h := handlers{
+	h := &Handlers{
 		baseURL: "http://localhost:8080",
 		svc:     svc,
 	}

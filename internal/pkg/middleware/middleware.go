@@ -25,6 +25,9 @@ var key = []byte("sh0rt7")
 
 var contextKeyUID = handlers.ContextKey("uid")
 
+// Auth checks whether current request has cookie and either
+// generates new cookie if no cookie was provided or
+// validates provided cookie.
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
@@ -68,6 +71,8 @@ func Auth(next http.Handler) http.Handler {
 	})
 }
 
+// Gzipper checks whether current request was encoded with gzip
+// and if so decodes it.
 func Gzipper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Encoding") == "gzip" {

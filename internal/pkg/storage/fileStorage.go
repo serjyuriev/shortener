@@ -22,6 +22,7 @@ type fileStore struct {
 	useFileStorage  bool
 }
 
+// NewFileStore initializes file storage.
 func NewFileStore(fileStoragePath string) (Store, error) {
 	s := &fileStore{
 		fileStoragePath: fileStoragePath,
@@ -38,10 +39,12 @@ func NewFileStore(fileStoragePath string) (Store, error) {
 	return s, nil
 }
 
+// DeleteManyURLs removes provided URLs from file.
 func (s *fileStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error {
 	return ErrNotImplementedYet
 }
 
+// FindByOriginalURL searches for short URL with corresponding original URL.
 func (s *fileStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	for _, v := range s.URLs {
 		if v.Original == originalURL {
@@ -51,6 +54,7 @@ func (s *fileStore) FindByOriginalURL(ctx context.Context, originalURL string) (
 	return "", ErrNoURLWasFound
 }
 
+// FindOriginalURL searches for original URL with corresponding short URL.
 func (s *fileStore) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
 	l, ok := s.URLs[shortPath]
 	if !ok {
@@ -59,6 +63,7 @@ func (s *fileStore) FindOriginalURL(ctx context.Context, shortPath string) (stri
 	return l.Original, nil
 }
 
+// FindURLsByUser returns all URLs from application storage that were added by user with provided ID.
 func (s *fileStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error) {
 	userURLs := make(map[string]string)
 	for k, v := range s.URLs {
@@ -72,6 +77,7 @@ func (s *fileStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[s
 	return userURLs, nil
 }
 
+// InsertManyURLs writes provided short URL - original URL pairs into a file.
 func (s *fileStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map[string]string) error {
 	oldMap := make(map[string]link)
 	for v, k := range s.URLs {
@@ -94,6 +100,7 @@ func (s *fileStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls m
 	return nil
 }
 
+// InsertNewURLPair writes provided short URL - original URL pair into a file.
 func (s *fileStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error {
 	newLink := link{
 		Original: originalURL,
@@ -109,6 +116,7 @@ func (s *fileStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shor
 	return nil
 }
 
+// Ping does nothing.
 func (s *fileStore) Ping(ctx context.Context) error {
 	return nil
 }

@@ -19,6 +19,7 @@ type pgStore struct {
 	cs string
 }
 
+// NewPgStore initializes PostgreSQL storage.
 func NewPgStore(connectionString string) (Store, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
@@ -47,6 +48,7 @@ func NewPgStore(connectionString string) (Store, error) {
 	return s, nil
 }
 
+// DeleteManyURLs removes provided URLs from database.
 func (s *pgStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: false})
 	if err != nil {
@@ -72,6 +74,7 @@ func (s *pgStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []s
 	return tx.Commit()
 }
 
+// FindByOriginalURL searches for short URL with corresponding original URL in database.
 func (s *pgStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	row := s.db.QueryRowContext(ctx, "SELECT short_id, is_deleted FROM urls WHERE original_url = $1", originalURL)
 	var isDeleted bool
@@ -87,6 +90,7 @@ func (s *pgStore) FindByOriginalURL(ctx context.Context, originalURL string) (st
 	return originalURL, nil
 }
 
+// FindOriginalURL searches for original URL with corresponding short URL in database.
 func (s *pgStore) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
 	row := s.db.QueryRowContext(ctx, "SELECT original_url, is_deleted FROM urls WHERE short_id = $1", shortPath)
 	var long string
@@ -103,6 +107,7 @@ func (s *pgStore) FindOriginalURL(ctx context.Context, shortPath string) (string
 	return long, nil
 }
 
+// FindURLsByUser returns all URLs from application storage that were added by user with provided ID.
 func (s *pgStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error) {
 	rows, err := s.db.QueryContext(ctx, "SELECT short_id, original_url FROM urls WHERE added_by_user = $1 AND is_deleted != TRUE", userID.String())
 	if err != nil {
@@ -130,6 +135,7 @@ func (s *pgStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[str
 	return urls, nil
 }
 
+// InsertManyURLs writes provided short URL - original URL pairs into database.
 func (s *pgStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map[string]string) error {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: false})
 	if err != nil {
@@ -152,6 +158,7 @@ func (s *pgStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map
 	return tx.Commit()
 }
 
+// InsertNewURLPair writes provided short URL - original URL pair into database.
 func (s *pgStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error {
 	if _, err := s.db.ExecContext(ctx, "INSERT INTO urls VALUES ($1, $2, $3, $4)",
 		shortPath,
@@ -171,6 +178,7 @@ func (s *pgStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortP
 	return nil
 }
 
+// Ping checks connection with database.
 func (s *pgStore) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }

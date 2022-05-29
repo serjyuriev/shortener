@@ -18,39 +18,59 @@ import (
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
+type userURLs struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+type (
+	postShortenRequest struct {
+		URL string `json:"url"`
+	}
+
+	postShortenResponse struct {
+		Result string `json:"result"`
+	}
+)
+
+type (
+	postBatchSingleRequest struct {
+		CorrelationID string `json:"correlation_id"`
+		OriginalURL   string `json:"original_url"`
+	}
+
+	postBatchSingleResponse struct {
+		CorrelationID string `json:"correlation_id"`
+		ShortURL      string `json:"short_url"`
+	}
+)
+
 type ContextKey string
 
 var contextKeyUID = ContextKey("uid")
 
-type Handlers interface {
-	DeleteURLsHandler(w http.ResponseWriter, r *http.Request)
-	GetURLHandler(w http.ResponseWriter, r *http.Request)
-	GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request)
-	PingHandler(w http.ResponseWriter, r *http.Request)
-	PostBatchHandler(w http.ResponseWriter, r *http.Request)
-	PostURLApiHandler(w http.ResponseWriter, r *http.Request)
-	PostURLHandler(w http.ResponseWriter, r *http.Request)
-}
-
-type handlers struct {
+// Handlers store link to service layer and app's base URL.
+type Handlers struct {
 	baseURL string
 	svc     service.Service
 }
 
-func MakeHandlers() (Handlers, error) {
+// MakeHandlers initializes application handler functions and service layer.
+func MakeHandlers() (*Handlers, error) {
 	svc, err := service.NewService()
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new service:\n%w", err)
 	}
 
 	cfg := config.GetConfig()
-	return &handlers{
+	return &Handlers{
 		baseURL: cfg.BaseURL,
 		svc:     svc,
 	}, nil
 }
 
-func (h *handlers) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
+// DeleteURLsHandler removes URLs provided by user from storage.
+func (h *Handlers) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
 
 	var req []string
@@ -72,7 +92,7 @@ func (h *handlers) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 // GetURLHandler searches service store for provided short URL
 // and, if such URL is found, sends a response,
 // redirecting to the corresponding long URL.
-func (h *handlers) GetURLHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	shortPath := strings.TrimPrefix(r.URL.Path, "/")
 	if shortPath == "" {
 		http.Error(w, "No short URL is provided.", http.StatusBadRequest)
@@ -94,7 +114,8 @@ func (h *handlers) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h *handlers) GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
+// GetUserURLsAPIHandler returns all URLs that were added by current user.
+func (h *Handlers) GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
@@ -128,7 +149,8 @@ func (h *handlers) GetUserURLsAPIHandler(w http.ResponseWriter, r *http.Request)
 	w.Write(json)
 }
 
-func (h *handlers) PingHandler(w http.ResponseWriter, r *http.Request) {
+// PingHandler provides health status of application.
+func (h *Handlers) PingHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 	if err := h.svc.Ping(ctx); err != nil {
@@ -141,7 +163,9 @@ func (h *handlers) PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func (h *handlers) PostBatchHandler(w http.ResponseWriter, r *http.Request) {
+// PostBatchHandler adds URLs provided by user into storage,
+// returning shortened URLs with corresponding correlation ID.
+func (h *Handlers) PostBatchHandler(w http.ResponseWriter, r *http.Request) {
 	uid := r.Context().Value(contextKeyUID).(string)
 	var req []postBatchSingleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -179,7 +203,9 @@ func (h *handlers) PostBatchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func (h *handlers) PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
+// PostURLApiHandler adds single URL provided by user in JSON format into storage,
+// returning its generated short URL.
+func (h *Handlers) PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 	var req postShortenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("unable to decode request's body: %v\n", err)
@@ -238,7 +264,7 @@ func (h *handlers) PostURLApiHandler(w http.ResponseWriter, r *http.Request) {
 // PostURLHandler reads a long URL provided in request body
 // and, if successful, creates a corresponding short URL,
 // storing both in service store.
-func (h *handlers) PostURLHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("unable to read request's body: %v\n", err)
@@ -284,27 +310,4 @@ func (h *handlers) PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}
 	w.Write([]byte(shortURL))
-}
-
-type userURLs struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
-type postShortenRequest struct {
-	URL string `json:"url"`
-}
-
-type postShortenResponse struct {
-	Result string `json:"result"`
-}
-
-type postBatchSingleRequest struct {
-	CorrelationID string `json:"correlation_id"`
-	OriginalURL   string `json:"original_url"`
-}
-
-type postBatchSingleResponse struct {
-	CorrelationID string `json:"correlation_id"`
-	ShortURL      string `json:"short_url"`
 }
