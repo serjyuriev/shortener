@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/serjyuriev/shortener/internal/pkg/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/serjyuriev/shortener/internal/pkg/service"
 )
 
 func TestPostBatchHandler(t *testing.T) {

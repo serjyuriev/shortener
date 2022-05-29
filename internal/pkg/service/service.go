@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
+
 	"github.com/serjyuriev/shortener/internal/pkg/config"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
