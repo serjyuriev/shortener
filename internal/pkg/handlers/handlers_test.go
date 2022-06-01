@@ -333,6 +333,76 @@ func Test_getURLHandler(t *testing.T) {
 	}
 }
 
+func TestGetUserURLsAPIHandler(t *testing.T) {
+	type want struct {
+		statusCode  int
+		contentType string
+		response    []userURLs
+	}
+	tests := []struct {
+		name    string
+		baseURL string
+		request string
+		want    want
+	}{
+		{
+			name:    "positive test #1",
+			baseURL: "http://localhost:8080",
+			request: "http://localhost:8080/api/user/urls",
+			want: want{
+				statusCode:  200,
+				contentType: "application/json",
+				response: []userURLs{
+					{
+						ShortURL:    "http://localhost:8080/lizuyl",
+						OriginalURL: "https://gitlab.com",
+					},
+					{
+						ShortURL:    "http://localhost:8080/ppgcni",
+						OriginalURL: "https://vk.com",
+					},
+					{
+						ShortURL:    "http://localhost:8080/ugkqzj",
+						OriginalURL: "https://github.com",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, err := service.NewService()
+			require.NoError(t, err)
+			h := &Handlers{
+				svc:     svc,
+				baseURL: tt.baseURL,
+			}
+			uid := uuid.New().String()
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			h.svc.InsertNewURLPair(ctx, uid, "lizuyl", "https://gitlab.com")
+			h.svc.InsertNewURLPair(ctx, uid, "ppgcni", "https://vk.com")
+			h.svc.InsertNewURLPair(ctx, uid, "ugkqzj", "https://github.com")
+			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
+			request = request.WithContext(context.WithValue(request.Context(), contextKeyUID, uid))
+			w := httptest.NewRecorder()
+			hf := http.HandlerFunc(h.GetUserURLsAPIHandler)
+			hf.ServeHTTP(w, request)
+			result := w.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
+			var urls []userURLs
+			err = json.NewDecoder(result.Body).Decode(&urls)
+			require.NoError(t, err)
+			for _, url := range urls {
+				assert.Contains(t, tt.want.response, url)
+			}
+		})
+	}
+}
+
 func BenchmarkGetURLHandler(b *testing.B) {
 	svc, err := service.NewService()
 	if err != nil {
