@@ -20,8 +20,8 @@ type Server interface {
 }
 
 type server struct {
-	address  string
 	handlers *handlers.Handlers
+	address  string
 }
 
 // NewServer initializes server.

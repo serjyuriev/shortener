@@ -51,8 +51,8 @@ var contextKeyUID = ContextKey("uid")
 
 // Handlers store link to service layer and app's base URL.
 type Handlers struct {
-	baseURL string
 	svc     service.Service
+	baseURL string
 }
 
 // MakeHandlers initializes application handler functions and service layer.
@@ -275,7 +275,7 @@ func (h *Handlers) PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Body cannot be empty.", http.StatusBadRequest)
 		return
 	}
-	if _, err := url.ParseRequestURI(string(b)); err != nil {
+	if _, err = url.ParseRequestURI(string(b)); err != nil {
 		log.Printf("unable to parse request URL: %v\n", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
