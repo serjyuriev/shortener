@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,6 +63,39 @@ func Test_Gzipper(t *testing.T) {
 				request.Header.Set("Content-Encoding", "gzip")
 			}
 			mid.ServeHTTP(recorder, request)
+		})
+	}
+}
+
+func Test_generateNewUserIDCookie(t *testing.T) {
+	uuidOrig, hex := generateNewUserIDCookie()
+	uuidParsed, err := validateCookie(hex)
+	assert.NoError(t, err)
+	assert.Equal(t, uuidOrig, uuidParsed)
+}
+
+func Test_validateCookie(t *testing.T) {
+	type want struct {
+		uid string
+	}
+	tests := []struct {
+		name   string
+		cookie string
+		want   want
+	}{
+		{
+			name:   "correct cookie",
+			cookie: "36353737663139312d613031322d346631362d616665342d36656430643534326535323333d92c2814ac0a09d73a675e9a187324028274fd0b7b03f488db1631c4b5328a",
+			want: want{
+				uid: "6577f191-a012-4f16-afe4-6ed0d542e523",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uuid, err := validateCookie(tt.cookie)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want.uid, uuid.String())
 		})
 	}
 }
