@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/go-chi/chi"
 	chimid "github.com/go-chi/chi/middleware"
@@ -14,15 +15,17 @@ import (
 	"github.com/serjyuriev/shortener/internal/pkg/middleware"
 )
 
+// Server provides method for application server management.
 type Server interface {
 	Start() error
 }
 
 type server struct {
 	address  string
-	handlers handlers.Handlers
+	handlers *handlers.Handlers
 }
 
+// NewServer initializes server.
 func NewServer() (Server, error) {
 	h, err := handlers.MakeHandlers()
 	if err != nil {
@@ -38,6 +41,10 @@ func NewServer() (Server, error) {
 
 // Start creates new router, binds handlers and starts http server.
 func (s *server) Start() error {
+	go func() {
+		log.Println(http.ListenAndServe(":8081", nil))
+	}()
+
 	r := chi.NewRouter()
 	r.Use(chimid.Recoverer)
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
@@ -50,8 +57,13 @@ func (s *server) Start() error {
 	r.Post("/", s.handlers.PostURLHandler)
 	r.Post("/api/shorten", s.handlers.PostURLApiHandler)
 	r.Post("/api/shorten/batch", s.handlers.PostBatchHandler)
+
+	server := &http.Server{
+		Addr:    s.address,
+		Handler: r,
+	}
 	log.Printf("starting server on %s\n", s.address)
-	return http.ListenAndServe(s.address, r)
+	return server.ListenAndServe()
 }
 
 var zippableTypes = []string{

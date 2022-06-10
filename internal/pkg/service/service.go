@@ -6,16 +6,19 @@ import (
 	"log"
 
 	"github.com/google/uuid"
+
 	"github.com/serjyuriev/shortener/internal/pkg/config"
 	"github.com/serjyuriev/shortener/internal/pkg/storage"
 )
 
+// Job contains information about worker's job.
 type Job struct {
 	Ctx    context.Context
 	UserID string
 	URLs   []string
 }
 
+// Service provides method of application service layer.
 type Service interface {
 	DeleteURLs(userID string, urls []string)
 	FindByOriginalURL(ctx context.Context, originalURL string) (string, error)
@@ -31,6 +34,7 @@ type service struct {
 	store   storage.Store
 }
 
+// NewService initializes application service layer.
 func NewService() (Service, error) {
 	cfg := config.GetConfig()
 
@@ -61,6 +65,7 @@ func NewService() (Service, error) {
 	return svc, nil
 }
 
+// DeleteURLs creates a job for removing URLs from storage and sends it into job channel.
 func (s *service) DeleteURLs(userID string, urls []string) {
 	s.jobChan <- &Job{
 		Ctx:    context.Background(),
@@ -69,6 +74,7 @@ func (s *service) DeleteURLs(userID string, urls []string) {
 	}
 }
 
+// FindByOriginalURL searches for short URL with corresponding original URL in application storage.
 func (s *service) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	shorty, err := s.store.FindByOriginalURL(ctx, originalURL)
 	if err != nil {
@@ -77,6 +83,7 @@ func (s *service) FindByOriginalURL(ctx context.Context, originalURL string) (st
 	return shorty, nil
 }
 
+// FindOriginalURL searches for original URL with corresponding short URL in application storage.
 func (s *service) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
 	original, err := s.store.FindOriginalURL(ctx, shortPath)
 	if err != nil {
@@ -85,6 +92,7 @@ func (s *service) FindOriginalURL(ctx context.Context, shortPath string) (string
 	return original, nil
 }
 
+// FindURLsByUser returns all URLs from application storage that were added by user with provided ID.
 func (s *service) FindURLsByUser(ctx context.Context, userID string) (map[string]string, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
@@ -98,6 +106,7 @@ func (s *service) FindURLsByUser(ctx context.Context, userID string) (map[string
 	return m, nil
 }
 
+// InsertManyURLs inserts provided short URL - original URL pairs into application storage.
 func (s *service) InsertManyURLs(ctx context.Context, userID string, urls map[string]string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
@@ -110,6 +119,7 @@ func (s *service) InsertManyURLs(ctx context.Context, userID string, urls map[st
 	return nil
 }
 
+// InsertNewURLPair inserts provided short URL - original URL pair into application storage.
 func (s *service) InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
@@ -122,6 +132,7 @@ func (s *service) InsertNewURLPair(ctx context.Context, userID, shortPath, origi
 	return nil
 }
 
+// Ping performs a healthcheck of application storage.
 func (s *service) Ping(ctx context.Context) error {
 	if err := s.store.Ping(ctx); err != nil {
 		return fmt.Errorf("unable to perform ping:\n%w", err)

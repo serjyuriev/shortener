@@ -11,64 +11,64 @@ import (
 	"github.com/google/uuid"
 )
 
-type link struct {
-	Original string
-	User     uuid.UUID
+type arrayLink struct {
+	link
+	Shortened string
 }
 
-type fileStore struct {
-	URLs            map[string]link
+type fileArrayStore struct {
+	URLs            []arrayLink
 	fileStoragePath string
 	useFileStorage  bool
 }
 
 // NewFileStore initializes file storage.
-func NewFileStore(fileStoragePath string) (Store, error) {
-	s := &fileStore{
+func NewFileArrayStore(fileStoragePath string) (Store, error) {
+	s := &fileArrayStore{
 		fileStoragePath: fileStoragePath,
 		useFileStorage:  fileStoragePath != "",
 	}
 	if s.useFileStorage {
 		if err := s.loadDataFromFile(); err != nil {
-			// log.Printf("unable to load data from file: %v\n", err)
 			return nil, fmt.Errorf("unable to load data from file: %w", err)
 		}
 	} else {
-		s.URLs = make(map[string]link)
+		s.URLs = make([]arrayLink, 0)
 	}
 	return s, nil
 }
 
 // DeleteManyURLs removes provided URLs from file.
-func (s *fileStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error {
+func (s *fileArrayStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []string) error {
 	return ErrNotImplementedYet
 }
 
 // FindByOriginalURL searches for short URL with corresponding original URL.
-func (s *fileStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
+func (s *fileArrayStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	for _, v := range s.URLs {
 		if v.Original == originalURL {
-			return v.Original, nil
+			return v.Shortened, nil
 		}
 	}
 	return "", ErrNoURLWasFound
 }
 
 // FindOriginalURL searches for original URL with corresponding short URL.
-func (s *fileStore) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
-	l, ok := s.URLs[shortPath]
-	if !ok {
-		return "", ErrNoURLWasFound
+func (s *fileArrayStore) FindOriginalURL(ctx context.Context, shortPath string) (string, error) {
+	for _, v := range s.URLs {
+		if v.Shortened == shortPath {
+			return v.Original, nil
+		}
 	}
-	return l.Original, nil
+	return "", ErrNoURLWasFound
 }
 
 // FindURLsByUser returns all URLs from application storage that were added by user with provided ID.
-func (s *fileStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error) {
+func (s *fileArrayStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[string]string, error) {
 	userURLs := make(map[string]string)
-	for k, v := range s.URLs {
+	for _, v := range s.URLs {
 		if v.User == userID {
-			userURLs[k] = v.Original
+			userURLs[v.Shortened] = v.Original
 		}
 	}
 	if len(userURLs) == 0 {
@@ -78,22 +78,24 @@ func (s *fileStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[s
 }
 
 // InsertManyURLs writes provided short URL - original URL pairs into a file.
-func (s *fileStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map[string]string) error {
-	oldMap := make(map[string]link)
-	for v, k := range s.URLs {
-		oldMap[v] = k
+func (s *fileArrayStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map[string]string) error {
+	links := make([]arrayLink, 0)
+	for k, v := range urls {
+		links = append(
+			links,
+			arrayLink{
+				Shortened: k,
+				link: link{
+					Original: v,
+					User:     userID,
+				},
+			},
+		)
 	}
-
-	for short, long := range urls {
-		newLink := link{
-			Original: long,
-			User:     userID,
-		}
-		s.URLs[short] = newLink
-	}
+	s.URLs = append(s.URLs, links...)
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			s.URLs = oldMap
+			s.URLs = s.URLs[:len(s.URLs)-len(links)-1]
 			return err
 		}
 	}
@@ -101,15 +103,18 @@ func (s *fileStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, urls m
 }
 
 // InsertNewURLPair writes provided short URL - original URL pair into a file.
-func (s *fileStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error {
-	newLink := link{
-		Original: originalURL,
-		User:     userID,
+func (s *fileArrayStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error {
+	newLink := arrayLink{
+		Shortened: shortPath,
+		link: link{
+			Original: originalURL,
+			User:     userID,
+		},
 	}
-	s.URLs[shortPath] = newLink
+	s.URLs = append(s.URLs, newLink)
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			delete(s.URLs, shortPath)
+			s.URLs = s.URLs[:len(s.URLs)-2]
 			return err
 		}
 	}
@@ -117,11 +122,11 @@ func (s *fileStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shor
 }
 
 // Ping does nothing.
-func (s *fileStore) Ping(ctx context.Context) error {
+func (s *fileArrayStore) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *fileStore) loadDataFromFile() error {
+func (s *fileArrayStore) loadDataFromFile() error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		log.Printf("unable to open file %s: %v\n", s.fileStoragePath, err)
@@ -129,7 +134,7 @@ func (s *fileStore) loadDataFromFile() error {
 	}
 	defer file.Close()
 
-	s.URLs = make(map[string]link)
+	s.URLs = make([]arrayLink, 0)
 	b, err := io.ReadAll(file)
 	if err != nil {
 		log.Printf("unable to read from file: %v\n", err)
@@ -145,7 +150,7 @@ func (s *fileStore) loadDataFromFile() error {
 	return nil
 }
 
-func (s *fileStore) writeDataToFile() error {
+func (s *fileArrayStore) writeDataToFile() error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		log.Printf("unable to open file %s: %v\n", s.fileStoragePath, err)
