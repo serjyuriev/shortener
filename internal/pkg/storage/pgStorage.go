@@ -79,7 +79,7 @@ func (s *pgStore) FindByOriginalURL(ctx context.Context, originalURL string) (st
 	row := s.db.QueryRowContext(ctx, "SELECT short_id, is_deleted FROM urls WHERE original_url = $1", originalURL)
 	var isDeleted bool
 	if err := row.Scan(&originalURL, &isDeleted); err != nil {
-
+		return "", fmt.Errorf("unable to execute query:\n%w", row.Err())
 	}
 	if row.Err() != nil {
 		return "", fmt.Errorf("unable to execute query:\n%w", row.Err())
