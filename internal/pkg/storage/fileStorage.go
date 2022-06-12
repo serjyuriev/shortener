@@ -46,9 +46,9 @@ func (s *fileStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls [
 
 // FindByOriginalURL searches for short URL with corresponding original URL.
 func (s *fileStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
-	for _, v := range s.URLs {
+	for k, v := range s.URLs {
 		if v.Original == originalURL {
-			return v.Original, nil
+			return k, nil
 		}
 	}
 	return "", ErrNoURLWasFound

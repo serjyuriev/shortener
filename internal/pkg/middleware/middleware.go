@@ -112,7 +112,9 @@ func validateCookie(cookie string) (uuid.UUID, error) {
 	}
 
 	h := hmac.New(sha256.New, key)
-	h.Write(decodedCookie[:36])
+	if _, err = h.Write(decodedCookie[:36]); err != nil {
+		return uuid.Nil, fmt.Errorf("unable to write decoded cookie:\n%w", err)
+	}
 
 	if hmac.Equal(decodedCookie[36:], h.Sum(nil)) {
 		uid, err := uuid.Parse(string(decodedCookie[:36]))

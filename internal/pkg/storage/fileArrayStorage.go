@@ -92,10 +92,11 @@ func (s *fileArrayStore) InsertManyURLs(ctx context.Context, userID uuid.UUID, u
 			},
 		)
 	}
+	oldURLs := s.URLs
 	s.URLs = append(s.URLs, links...)
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			s.URLs = s.URLs[:len(s.URLs)-len(links)-1]
+			s.URLs = oldURLs
 			return err
 		}
 	}
@@ -114,7 +115,11 @@ func (s *fileArrayStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID,
 	s.URLs = append(s.URLs, newLink)
 	if s.useFileStorage {
 		if err := s.writeDataToFile(); err != nil {
-			s.URLs = s.URLs[:len(s.URLs)-2]
+			if len(s.URLs) == 1 {
+				s.URLs = make([]arrayLink, 0)
+			} else {
+				s.URLs = s.URLs[:len(s.URLs)-2]
+			}
 			return err
 		}
 	}

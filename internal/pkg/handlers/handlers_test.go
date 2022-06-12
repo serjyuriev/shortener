@@ -399,11 +399,11 @@ func ExampleHandlers_PostURLHandler() {
 
 func TestPostBatchHandler(t *testing.T) {
 	type want struct {
-		statusCode    int
-		contentType   string
-		generateURL   bool
 		urlRegex      *regexp.Regexp
+		contentType   string
 		correlationID string
+		statusCode    int
+		generateURL   bool
 	}
 	tests := []struct {
 		name          string
@@ -478,11 +478,11 @@ func TestPostBatchHandler(t *testing.T) {
 
 func Test_postURLApiHandler(t *testing.T) {
 	type want struct {
-		statusCode  int
-		contentType string
-		generateURL bool
 		urlRegex    *regexp.Regexp
+		contentType string
 		response    string
+		statusCode  int
+		generateURL bool
 	}
 	tests := []struct {
 		name    string
@@ -569,11 +569,11 @@ func Test_postURLApiHandler(t *testing.T) {
 
 func Test_postURLHandler(t *testing.T) {
 	type want struct {
-		statusCode  int
-		contentType string
-		generateURL bool
 		urlRegex    *regexp.Regexp
+		contentType string
 		response    string
+		statusCode  int
+		generateURL bool
 	}
 	tests := []struct {
 		name    string
@@ -654,8 +654,8 @@ func Test_postURLHandler(t *testing.T) {
 
 func Test_getURLHandler(t *testing.T) {
 	type want struct {
-		statusCode int
 		location   string
+		statusCode int
 	}
 	tests := []struct {
 		name    string
@@ -713,9 +713,9 @@ func Test_getURLHandler(t *testing.T) {
 
 func TestGetUserURLsAPIHandler(t *testing.T) {
 	type want struct {
-		statusCode  int
 		contentType string
 		response    []userURLs
+		statusCode  int
 	}
 	tests := []struct {
 		name    string

@@ -78,7 +78,9 @@ func (s *pgStore) DeleteManyURLs(ctx context.Context, userID uuid.UUID, urls []s
 func (s *pgStore) FindByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	row := s.db.QueryRowContext(ctx, "SELECT short_id, is_deleted FROM urls WHERE original_url = $1", originalURL)
 	var isDeleted bool
-	row.Scan(&originalURL, &isDeleted)
+	if err := row.Scan(&originalURL, &isDeleted); err != nil {
+		return "", fmt.Errorf("unable to execute query:\n%w", row.Err())
+	}
 	if row.Err() != nil {
 		return "", fmt.Errorf("unable to execute query:\n%w", row.Err())
 	}
@@ -118,7 +120,7 @@ func (s *pgStore) FindURLsByUser(ctx context.Context, userID uuid.UUID) (map[str
 	urls := make(map[string]string)
 	for rows.Next() {
 		var short, long string
-		if err := rows.Scan(&short, &long); err != nil {
+		if err = rows.Scan(&short, &long); err != nil {
 			return nil, fmt.Errorf("unable to scan values:\n%w", err)
 		}
 		urls[short] = long
