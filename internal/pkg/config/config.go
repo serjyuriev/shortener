@@ -16,7 +16,7 @@ import (
 // Config contains information about application configuration.
 type Config struct {
 	ConfigPath      string `json:"-" env:"CONFIG"`
-	BaseURL         string `json:"base_url" env:"BASE_URL" envDefault:"https://localhost:8080"`
+	BaseURL         string `json:"base_url" env:"BASE_URL" envDefault:"http://localhost:8080"`
 	DatabaseDSN     string `json:"database_dsn,omitempty" env:"DATABASE_DSN"`
 	FileStoragePath string `json:"file_storage_path,omitempty" env:"FILE_STORAGE_PATH"`
 	Protocol        string `json:"protocol" env:"-"`
@@ -48,10 +48,10 @@ func GetConfig() *Config {
 		var configPath string
 
 		flag.StringVar(&configPath, "c", "", "json config file")
-		flag.StringVar(&cfg.BaseURL, "b", "https://localhost:8080", "base URL for shorten links")
+		flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base URL for shorten links")
 		flag.StringVar(&cfg.DatabaseDSN, "d", "", "data source name")
 		flag.StringVar(&cfg.FileStoragePath, "f", "shorten.json", "shorten URL file path")
-		flag.StringVar(&cfg.Protocol, "p", "https", "protocol to use (http/https)")
+		flag.StringVar(&cfg.Protocol, "p", "http", "protocol to use (http/https)")
 		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "web server address")
 		flag.BoolVar(&cfg.EnableHTTPS, "s", false, "enable https")
 		flag.Parse()
