@@ -3,17 +3,18 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/serjyuriev/shortener/internal/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteManyURLs(t *testing.T) {
 	userID := uuid.New()
-	dsn := os.Getenv("DATABASE_DSN")
+	cfg := config.GetConfig()
+	dsn := cfg.DatabaseDSN
 	if dsn == "" {
 		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
 	}
@@ -86,7 +87,8 @@ func TestDeleteManyURLs(t *testing.T) {
 
 func TestFindByOriginalURL(t *testing.T) {
 	userID := uuid.New()
-	dsn := os.Getenv("DATABASE_DSN")
+	cfg := config.GetConfig()
+	dsn := cfg.DatabaseDSN
 	if dsn == "" {
 		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
 	}
@@ -193,7 +195,8 @@ func TestFindByOriginalURL(t *testing.T) {
 
 func TestInsertManyURLs(t *testing.T) {
 	userID := uuid.New()
-	dsn := os.Getenv("DATABASE_DSN")
+	cfg := config.GetConfig()
+	dsn := cfg.DatabaseDSN
 	if dsn == "" {
 		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
 	}
@@ -286,7 +289,8 @@ func TestInsertManyURLs(t *testing.T) {
 
 func TestInsertNewURLPair(t *testing.T) {
 	userID := uuid.New()
-	dsn := os.Getenv("DATABASE_DSN")
+	cfg := config.GetConfig()
+	dsn := cfg.DatabaseDSN
 	if dsn == "" {
 		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
 	}
@@ -371,7 +375,8 @@ func TestInsertNewURLPair(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	dsn := os.Getenv("DATABASE_DSN")
+	cfg := config.GetConfig()
+	dsn := cfg.DatabaseDSN
 	if dsn == "" {
 		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
 	}
