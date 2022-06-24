@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,6 +16,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -58,10 +61,6 @@ func NewServer() (Server, error) {
 
 // Start creates new router, binds handlers and starts http server.
 func (s *server) Start() error {
-	go func() {
-		log.Println(http.ListenAndServe(":8081", nil))
-	}()
-
 	r := chi.NewRouter()
 	r.Use(chimid.Recoverer)
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
@@ -79,6 +78,23 @@ func (s *server) Start() error {
 		Addr:    s.cfg.ServerAddress,
 		Handler: r,
 	}
+
+	sigChan := make(chan os.Signal, 3)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		sig := <-sigChan
+		log.Printf("\r\nПолучен сигнал: %s", sig.String())
+
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("HTTP server Shutdown: %v", err)
+		}
+	}()
+
+	go func() {
+		log.Println(http.ListenAndServe(":8081", nil))
+	}()
+
 	log.Printf("starting server on %s\n", s.cfg.ServerAddress)
 	if s.cfg.EnableHTTPS {
 		return server.ListenAndServeTLS("cert.pem", "key.pem")
