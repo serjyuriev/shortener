@@ -21,7 +21,7 @@ func TestDeleteManyURLs(t *testing.T) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	s := &pgStore{
@@ -40,7 +40,7 @@ func TestDeleteManyURLs(t *testing.T) {
 	)
 	if err != nil {
 		t.Logf("unable to create table: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	err = s.InsertManyURLs(
@@ -61,7 +61,7 @@ func TestDeleteManyURLs(t *testing.T) {
 	)
 	if err != nil {
 		t.Logf("unable to insert values: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	urls := []string{
@@ -95,7 +95,7 @@ func TestFindByOriginalURL(t *testing.T) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	s := &pgStore{
@@ -114,7 +114,7 @@ func TestFindByOriginalURL(t *testing.T) {
 	)
 	if err != nil {
 		t.Logf("unable to create table: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	err = s.InsertManyURLs(
@@ -135,7 +135,7 @@ func TestFindByOriginalURL(t *testing.T) {
 	)
 	if err != nil {
 		t.Logf("unable to insert values: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	type want struct {
@@ -203,7 +203,7 @@ func TestInsertManyURLs(t *testing.T) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	s := &pgStore{
@@ -222,7 +222,7 @@ func TestInsertManyURLs(t *testing.T) {
 	)
 	if err != nil {
 		t.Logf("unable to create table: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	type want struct {
@@ -297,7 +297,7 @@ func TestInsertNewURLPair(t *testing.T) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	s := &pgStore{
@@ -316,7 +316,7 @@ func TestInsertNewURLPair(t *testing.T) {
 	)
 	if err != nil {
 		t.Logf("unable to create table: %v\n", err)
-		t.FailNow()
+		t.SkipNow()
 	}
 
 	type want struct {
