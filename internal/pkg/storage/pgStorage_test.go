@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,7 +13,10 @@ import (
 
 func TestDeleteManyURLs(t *testing.T) {
 	userID := uuid.New()
-	dsn := "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
@@ -82,7 +86,10 @@ func TestDeleteManyURLs(t *testing.T) {
 
 func TestFindByOriginalURL(t *testing.T) {
 	userID := uuid.New()
-	dsn := "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
@@ -186,7 +193,10 @@ func TestFindByOriginalURL(t *testing.T) {
 
 func TestInsertManyURLs(t *testing.T) {
 	userID := uuid.New()
-	dsn := "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
@@ -276,7 +286,10 @@ func TestInsertManyURLs(t *testing.T) {
 
 func TestInsertNewURLPair(t *testing.T) {
 	userID := uuid.New()
-	dsn := "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Logf("unable to connect to postgre: %v\n", err)
@@ -358,7 +371,10 @@ func TestInsertNewURLPair(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	dsn := "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgres://shorty:sh0rt4@localhost:5432/shortenertest"
+	}
 	s, err := NewPgStore(dsn)
 	require.NoError(t, err)
 	err = s.Ping(context.Background())
