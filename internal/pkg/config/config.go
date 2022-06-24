@@ -21,7 +21,7 @@ type Config struct {
 	FileStoragePath string `json:"file_storage_path,omitempty" env:"FILE_STORAGE_PATH"`
 	Protocol        string `json:"protocol" env:"-"`
 	ServerAddress   string `json:"server_address" env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
-	EnableHTTPS     bool   `json:"enable_https" env:"ENABLE_HTTPS" envDefault:"true"`
+	EnableHTTPS     bool   `json:"enable_https" env:"ENABLE_HTTPS" envDefault:"false"`
 }
 
 // String prints current configuration.
