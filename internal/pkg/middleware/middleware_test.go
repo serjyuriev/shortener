@@ -13,6 +13,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_Auth(t *testing.T) {
+	tests := []struct {
+		name       string
+		requestURL string
+		testURL    string
+	}{
+		{
+			name:       "positive test",
+			requestURL: "http://localhost:8080/",
+			testURL:    "https://github.com/serjyuriev/",
+		},
+		{
+			name:       "positive test - without encoding",
+			requestURL: "http://localhost:8080/",
+			testURL:    "https://github.com/serjyuriev/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requestBody bytes.Buffer
+			w := bufio.NewWriter(&requestBody)
+			_, err := w.Write([]byte(tt.testURL))
+			require.NoError(t, err)
+			require.NoError(t, w.Flush())
+
+			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				URL, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				require.Equal(t, tt.testURL, string(URL))
+			})
+			mid := Auth(nextHandler)
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, tt.requestURL, &requestBody)
+			request.AddCookie(&http.Cookie{
+				Name:  "userID",
+				Value: "123",
+			})
+			mid.ServeHTTP(recorder, request)
+		})
+	}
+}
+
 func Test_Gzipper(t *testing.T) {
 	tests := []struct {
 		name               string

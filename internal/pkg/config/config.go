@@ -1,9 +1,12 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 
@@ -12,11 +15,13 @@ import (
 
 // Config contains information about application configuration.
 type Config struct {
-	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	Protocol        string `env:"-"`
-	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
+	ConfigPath      string `json:"-" env:"CONFIG"`
+	BaseURL         string `json:"base_url" env:"BASE_URL" envDefault:"http://localhost:8080"`
+	DatabaseDSN     string `json:"database_dsn,omitempty" env:"DATABASE_DSN"`
+	FileStoragePath string `json:"file_storage_path,omitempty" env:"FILE_STORAGE_PATH"`
+	Protocol        string `json:"protocol" env:"-"`
+	ServerAddress   string `json:"server_address" env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
+	EnableHTTPS     bool   `json:"enable_https" env:"ENABLE_HTTPS" envDefault:"false"`
 }
 
 // String prints current configuration.
@@ -40,12 +45,32 @@ var cfg *Config
 func GetConfig() *Config {
 	once.Do(func() {
 		cfg = &Config{}
+		var configPath string
+
+		flag.StringVar(&configPath, "c", "", "json config file")
 		flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base URL for shorten links")
 		flag.StringVar(&cfg.DatabaseDSN, "d", "", "data source name")
 		flag.StringVar(&cfg.FileStoragePath, "f", "shorten.json", "shorten URL file path")
 		flag.StringVar(&cfg.Protocol, "p", "http", "protocol to use (http/https)")
 		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "web server address")
+		flag.BoolVar(&cfg.EnableHTTPS, "s", false, "enable https")
 		flag.Parse()
+
+		if configPath != "" {
+			file, err := os.OpenFile(configPath, os.O_RDONLY, 0644)
+			if err != nil {
+				log.Printf("unable to open JSON config: %v\n", err)
+			} else {
+				jsonBody, err := io.ReadAll(file)
+				if err != nil {
+					log.Printf("unable to read JSON config: %v\n", err)
+				} else if err = json.Unmarshal(jsonBody, cfg); err != nil {
+					log.Printf("unable to unmarshal JSON config: %v\n", err)
+				} else {
+					log.Println("JSON config file was read successfully")
+				}
+			}
+		}
 
 		if err := env.Parse(cfg); err != nil {
 			log.Fatalf("unable to load values from environment variables: %v", err)

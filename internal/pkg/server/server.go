@@ -1,11 +1,24 @@
 package server
 
 import (
+	"bytes"
 	"compress/gzip"
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"log"
+	"math/big"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi"
 	chimid "github.com/go-chi/chi/middleware"
@@ -21,8 +34,8 @@ type Server interface {
 }
 
 type server struct {
+	cfg      *config.Config
 	handlers *handlers.Handlers
-	address  string
 }
 
 // NewServer initializes server.
@@ -33,18 +46,21 @@ func NewServer() (Server, error) {
 	}
 
 	cfg := config.GetConfig()
+
+	if cfg.EnableHTTPS {
+		if err = createCerfs(); err != nil {
+			return nil, fmt.Errorf("unable to create certificate: %v", err)
+		}
+	}
+
 	return &server{
-		address:  cfg.ServerAddress,
+		cfg:      cfg,
 		handlers: h,
 	}, nil
 }
 
 // Start creates new router, binds handlers and starts http server.
 func (s *server) Start() error {
-	go func() {
-		log.Println(http.ListenAndServe(":8081", nil))
-	}()
-
 	r := chi.NewRouter()
 	r.Use(chimid.Recoverer)
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
@@ -59,11 +75,32 @@ func (s *server) Start() error {
 	r.Post("/api/shorten/batch", s.handlers.PostBatchHandler)
 
 	server := &http.Server{
-		Addr:    s.address,
+		Addr:    s.cfg.ServerAddress,
 		Handler: r,
 	}
-	log.Printf("starting server on %s\n", s.address)
-	return server.ListenAndServe()
+
+	sigChan := make(chan os.Signal, 3)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		sig := <-sigChan
+		log.Printf("\r\nПолучен сигнал: %s", sig.String())
+
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("HTTP server Shutdown: %v", err)
+		}
+	}()
+
+	go func() {
+		log.Println(http.ListenAndServe(":8081", nil))
+	}()
+
+	log.Printf("starting server on %s\n", s.cfg.ServerAddress)
+	if s.cfg.EnableHTTPS {
+		return server.ListenAndServeTLS("cert.pem", "key.pem")
+	} else {
+		return server.ListenAndServe()
+	}
 }
 
 var zippableTypes = []string{
@@ -73,4 +110,66 @@ var zippableTypes = []string{
 	"text/html",
 	"text/plain",
 	"text/xml",
+}
+
+func createCerfs() error {
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(164),
+		Subject: pkix.Name{
+			Organization: []string{"SVY"},
+			Country:      []string{"RU"},
+		},
+		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(1, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var certPEM bytes.Buffer
+	pem.Encode(&certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	certFile, err := os.OpenFile("cert.pem", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("unable to open cert file: %v", err)
+		return err
+	}
+	defer certFile.Close()
+	if _, err = certPEM.WriteTo(certFile); err != nil {
+		log.Printf("unable to write data to cert file: %v", err)
+		return err
+	}
+
+	var privateKeyPEM bytes.Buffer
+	pem.Encode(&privateKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	keyFile, err := os.OpenFile("key.pem", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("unable to open key file: %v", err)
+		return err
+	}
+	defer keyFile.Close()
+	if _, err = privateKeyPEM.WriteTo(keyFile); err != nil {
+		log.Printf("unable to write data to key file: %v", err)
+		return err
+	}
+
+	return nil
 }

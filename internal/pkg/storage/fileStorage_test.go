@@ -15,6 +15,40 @@ const (
 	mapStore   = "map"
 )
 
+func Test_fileStore_DeleteManyURLs(t *testing.T) {
+	tests := []struct {
+		name      string
+		storeType string
+	}{
+		{
+			name:      "delete many (map)",
+			storeType: mapStore,
+		},
+		{
+			name:      "delete many (array)",
+			storeType: arrayStore,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				s   Store
+				err error
+			)
+			switch tt.storeType {
+			case mapStore:
+				s, err = NewFileStore("")
+			case arrayStore:
+				s, err = NewFileArrayStore("")
+			}
+			require.NoError(t, err)
+
+			err = s.DeleteManyURLs(context.Background(), uuid.Nil, nil)
+			require.ErrorIs(t, err, ErrNotImplementedYet)
+		})
+	}
+}
+
 func Test_fileStore_FindByOriginalURL(t *testing.T) {
 	type want struct {
 		hasError bool
