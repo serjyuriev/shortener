@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,6 +52,7 @@ var contextKeyUID = ContextKey("uid")
 
 // Handlers store link to service layer and app's base URL.
 type Handlers struct {
+	cfg     *config.Config
 	svc     service.Service
 	baseURL string
 }
@@ -65,6 +67,7 @@ func MakeHandlers() (*Handlers, error) {
 	cfg := config.GetConfig()
 	return &Handlers{
 		baseURL: cfg.BaseURL,
+		cfg:     config.GetConfig(),
 		svc:     svc,
 	}, nil
 }
@@ -314,6 +317,20 @@ func (h *Handlers) PostURLHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsHandler returns amount of URLs and users in the system.
 func (h *Handlers) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
+	realIPHeader := r.Header.Get("X-Real-IP")
+	realIP := net.ParseIP(realIPHeader)
+	if h.cfg.TrustedNet == nil {
+		log.Println("trusted subnet was not provided")
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if !h.cfg.TrustedNet.Contains(realIP) {
+		log.Printf("ip %s is not in the trusted subnet\n", realIP)
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	stats, err := h.svc.GetStats(r.Context())
 	if err != nil {
 		log.Printf("unable to get system statistics: %v\n", err)
