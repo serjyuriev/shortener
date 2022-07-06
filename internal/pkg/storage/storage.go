@@ -22,4 +22,6 @@ type Store interface {
 	InsertManyURLs(ctx context.Context, userID uuid.UUID, urls map[string]string) error
 	InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortPath, originalURL string) error
 	Ping(ctx context.Context) error
+	CountURLs(ctx context.Context) (int, error)
+	CountUsers(ctx context.Context) (int, error)
 }

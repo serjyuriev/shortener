@@ -18,6 +18,12 @@ type Job struct {
 	URLs   []string
 }
 
+// Stats contains amount of users and urls in the system.
+type Stats struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}
+
 // Service provides method of application service layer.
 type Service interface {
 	DeleteURLs(userID string, urls []string)
@@ -27,6 +33,7 @@ type Service interface {
 	InsertManyURLs(ctx context.Context, userID string, urls map[string]string) error
 	InsertNewURLPair(ctx context.Context, userID, shortPath, originalURL string) error
 	Ping(ctx context.Context) error
+	GetStats(ctx context.Context) (*Stats, error)
 }
 
 type service struct {
@@ -138,6 +145,20 @@ func (s *service) Ping(ctx context.Context) error {
 		return fmt.Errorf("unable to perform ping:\n%w", err)
 	}
 	return nil
+}
+
+// GetStats returns amount of users and URLs in the system.
+func (s *service) GetStats(ctx context.Context) (*Stats, error) {
+	urls, err := s.store.CountURLs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to count urls:\n%w", err)
+	}
+	users, err := s.store.CountUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to count users:\n%w", err)
+	}
+
+	return &Stats{URLs: urls, Users: users}, nil
 }
 
 func (s *service) deleteURLs(ctx context.Context, userID string, urls []string) {

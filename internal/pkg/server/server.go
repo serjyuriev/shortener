@@ -70,6 +70,7 @@ func (s *server) Start() error {
 	r.Get("/ping", s.handlers.PingHandler)
 	r.Get("/{shortPath}", s.handlers.GetURLHandler)
 	r.Get("/api/user/urls", s.handlers.GetUserURLsAPIHandler)
+	r.Get("/api/internal/stats", s.handlers.GetStatsHandler)
 	r.Post("/", s.handlers.PostURLHandler)
 	r.Post("/api/shorten", s.handlers.PostURLApiHandler)
 	r.Post("/api/shorten/batch", s.handlers.PostBatchHandler)

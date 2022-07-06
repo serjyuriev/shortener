@@ -121,6 +121,14 @@ func (s *fileStore) Ping(ctx context.Context) error {
 	return nil
 }
 
+func (s *fileStore) CountURLs(ctx context.Context) (int, error) {
+	return 0, ErrNotImplementedYet
+}
+
+func (s *fileStore) CountUsers(ctx context.Context) (int, error) {
+	return 0, ErrNotImplementedYet
+}
+
 func (s *fileStore) loadDataFromFile() error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
