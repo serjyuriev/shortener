@@ -20,12 +20,17 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/go-chi/chi"
 	chimid "github.com/go-chi/chi/middleware"
 
+	"github.com/serjyuriev/shortener/internal/app/grpcsvc"
 	"github.com/serjyuriev/shortener/internal/pkg/config"
 	"github.com/serjyuriev/shortener/internal/pkg/handlers"
 	"github.com/serjyuriev/shortener/internal/pkg/middleware"
+	"github.com/serjyuriev/shortener/proto/grpchandlers"
+	"google.golang.org/grpc/keepalive"
 )
 
 // Server provides method for application server management.
@@ -34,8 +39,9 @@ type Server interface {
 }
 
 type server struct {
-	cfg      *config.Config
-	handlers *handlers.Handlers
+	cfg         *config.Config
+	handlers    *handlers.Handlers
+	grpcservice *grpcsvc.Service
 }
 
 // NewServer initializes server.
@@ -46,21 +52,50 @@ func NewServer() (Server, error) {
 	}
 
 	cfg := config.GetConfig()
-
 	if cfg.EnableHTTPS {
 		if err = createCerfs(); err != nil {
 			return nil, fmt.Errorf("unable to create certificate: %v", err)
 		}
 	}
 
+	gsvc, err := grpcsvc.MakeService()
+	if err != nil {
+		return nil, fmt.Errorf("unable to make handlers:\n%w", err)
+	}
+
 	return &server{
-		cfg:      cfg,
-		handlers: h,
+		cfg:         cfg,
+		handlers:    h,
+		grpcservice: gsvc,
 	}, nil
 }
 
 // Start creates new router, binds handlers and starts http server.
 func (s *server) Start() error {
+	go func() {
+		listen, err := net.Listen("tcp", ":8081")
+		if err != nil {
+			log.Println("could not start grpc server")
+			return
+		}
+		serv := grpc.NewServer(
+			grpc.KeepaliveParams(
+				keepalive.ServerParameters{
+					MaxConnectionIdle: 5 * time.Minute,
+				},
+			),
+		)
+		grpchandlers.RegisterShortenerServer(
+			serv,
+			s.grpcservice,
+		)
+
+		log.Println("Сервер gRPC начал работу")
+		if err := serv.Serve(listen); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	r := chi.NewRouter()
 	r.Use(chimid.Recoverer)
 	r.Use(chimid.Compress(gzip.BestSpeed, zippableTypes...))
@@ -93,7 +128,7 @@ func (s *server) Start() error {
 	}()
 
 	go func() {
-		log.Println(http.ListenAndServe(":8081", nil))
+		log.Println(http.ListenAndServe(":8082", nil))
 	}()
 
 	log.Printf("starting server on %s\n", s.cfg.ServerAddress)
