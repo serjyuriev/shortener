@@ -70,7 +70,7 @@ func (s *Service) GetUserURLs(ctx context.Context, in *g.GetUserURLsRequest) (*g
 		if errors.Is(err, storage.ErrNoURLWasFound) {
 			res.Error = fmt.Sprintf("user %s does not have any URLs", in.UserID)
 		} else {
-			res.Error = fmt.Sprint("unable to find URLs")
+			res.Error = "unable to find URLs"
 		}
 	} else {
 		res.Shorties = make([]string, len(m))
@@ -108,7 +108,7 @@ func (s *Service) PostBatch(ctx context.Context, in *g.PostBatchRequest) (*g.Pos
 	}
 
 	if err := s.shortySvc.InsertManyURLs(ctx, in.UserID, m); err != nil {
-		res.Error = fmt.Sprint("unable to insert urls")
+		res.Error = "unable to insert urls"
 	}
 
 	return &res, nil
