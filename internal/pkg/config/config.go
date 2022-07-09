@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -15,13 +16,16 @@ import (
 
 // Config contains information about application configuration.
 type Config struct {
-	ConfigPath      string `json:"-" env:"CONFIG"`
-	BaseURL         string `json:"base_url" env:"BASE_URL" envDefault:"http://localhost:8080"`
-	DatabaseDSN     string `json:"database_dsn,omitempty" env:"DATABASE_DSN"`
-	FileStoragePath string `json:"file_storage_path,omitempty" env:"FILE_STORAGE_PATH"`
-	Protocol        string `json:"protocol" env:"-"`
-	ServerAddress   string `json:"server_address" env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
-	EnableHTTPS     bool   `json:"enable_https" env:"ENABLE_HTTPS" envDefault:"false"`
+	ConfigPath      string     `json:"-" env:"CONFIG"`
+	BaseURL         string     `json:"base_url" env:"BASE_URL" envDefault:"http://localhost:8080"`
+	DatabaseDSN     string     `json:"database_dsn,omitempty" env:"DATABASE_DSN"`
+	FileStoragePath string     `json:"file_storage_path,omitempty" env:"FILE_STORAGE_PATH"`
+	Protocol        string     `json:"protocol" env:"-"`
+	ServerAddress   string     `json:"server_address" env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
+	TrustedSubnet   string     `json:"trusted_subnet,omitempty" env:"TRUSTED_SUBNET"`
+	TrustedIP       net.IP     `json:"-" env:"-"`
+	TrustedNet      *net.IPNet `json:"-" env:"-"`
+	EnableHTTPS     bool       `json:"enable_https" env:"ENABLE_HTTPS" envDefault:"false"`
 }
 
 // String prints current configuration.
@@ -53,6 +57,7 @@ func GetConfig() *Config {
 		flag.StringVar(&cfg.FileStoragePath, "f", "shorten.json", "shorten URL file path")
 		flag.StringVar(&cfg.Protocol, "p", "http", "protocol to use (http/https)")
 		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "web server address")
+		flag.StringVar(&cfg.TrustedSubnet, "t", "", "trusted subnet for stats handler")
 		flag.BoolVar(&cfg.EnableHTTPS, "s", false, "enable https")
 		flag.Parse()
 
@@ -75,8 +80,17 @@ func GetConfig() *Config {
 		if err := env.Parse(cfg); err != nil {
 			log.Fatalf("unable to load values from environment variables: %v", err)
 		}
+
 		if !strings.Contains(cfg.BaseURL, cfg.ServerAddress) {
 			cfg.BaseURL = fmt.Sprintf("%s://%s", cfg.Protocol, cfg.ServerAddress)
+		}
+
+		ip, net, err := net.ParseCIDR(cfg.TrustedSubnet)
+		if err != nil {
+			cfg.TrustedSubnet = ""
+		} else {
+			cfg.TrustedIP = ip
+			cfg.TrustedNet = net
 		}
 	})
 	return cfg

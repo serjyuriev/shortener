@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package proto.grpchandlers;
+
+option go_package = "proto/grpchandlers";
+
+message DeleteURLsRequest {
+    string userID = 1;
+    repeated string originals = 2;
+}
+
+message DeleteURLsResponse {
+    string error = 1;
+}
+
+message GetURLRequest {
+    string shorty = 1;
+}
+
+message GetURLResponse {
+    string original = 1;
+    string error = 2;
+}
+
+message GetUserURLsRequest {
+    string userID = 1;
+}
+
+message GetUserURLsResponse {
+    repeated string shorties = 1;
+    repeated string originals = 2;
+    string error = 3;
+}
+
+message PingResponse {
+    string error = 1;
+}
+
+message PostBatchRequest {
+    string userID = 1;
+    repeated string correlationID = 2;
+    repeated string originals = 3;
+}
+
+message PostBatchResponse {
+    repeated string correlationID = 1;
+    repeated string shorties = 2;
+    string error = 3;
+}
+
+message PostURLRequest {
+    string userID = 1;
+    string url = 2;
+}
+
+message PostURLResponse {
+    string shorty = 1;
+    string error = 2;
+}
+
+service Shortener {
+    rpc DeleteURLs(DeleteURLsRequest) returns (DeleteURLsResponse);
+    rpc GetURL(GetURLRequest) returns (GetURLResponse);
+    rpc GetUserURLs(GetUserURLsRequest) returns (GetUserURLsResponse);
+    rpc Ping(google.protobuf.Empty) returns (PingResponse);
+    rpc PostBatch(PostBatchRequest) returns (PostBatchResponse);
+    rpc PostURL(PostURLRequest) returns (PostURLResponse);
+}

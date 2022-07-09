@@ -184,3 +184,27 @@ func (s *pgStore) InsertNewURLPair(ctx context.Context, userID uuid.UUID, shortP
 func (s *pgStore) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
+
+// CountURLs returns amount of shortened URLs in the database.
+func (s *pgStore) CountURLs(ctx context.Context) (int, error) {
+	ctr := s.db.QueryRowContext(ctx, "select count(*) from urls;")
+	var amount int
+	ctr.Scan(&amount)
+	if ctr.Err() != nil {
+		return 0, fmt.Errorf("unable to execute query:\n%w", ctr.Err())
+	}
+
+	return amount, nil
+}
+
+// CountUsers returns amount of unique users in the database.
+func (s *pgStore) CountUsers(ctx context.Context) (int, error) {
+	ctr := s.db.QueryRowContext(ctx, "select count(*) from (select distinct added_by_user from urls) as temp;")
+	var amount int
+	ctr.Scan(&amount)
+	if ctr.Err() != nil {
+		return 0, fmt.Errorf("unable to execute query:\n%w", ctr.Err())
+	}
+
+	return amount, nil
+}
